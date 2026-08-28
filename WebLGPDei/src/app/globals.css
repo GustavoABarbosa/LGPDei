@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+/*
+ * Muted scale (text-muted-100 … text-muted-900)
+ * 100 = subtle / low emphasis (lower foreground opacity)
+ * 500 = default secondary text (text-muted)
+ * 900 = stronger muted text (higher foreground opacity)
+ */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+
+  --color-muted-100: color-mix(in oklab, var(--foreground) 20%, transparent);
+  --color-muted-200: color-mix(in oklab, var(--foreground) 30%, transparent);
+  --color-muted-300: color-mix(in oklab, var(--foreground) 40%, transparent);
+  --color-muted-400: color-mix(in oklab, var(--foreground) 48%, transparent);
+  --color-muted-500: color-mix(in oklab, var(--foreground) 55%, transparent);
+  --color-muted-600: color-mix(in oklab, var(--foreground) 62%, transparent);
+  --color-muted-700: color-mix(in oklab, var(--foreground) 70%, transparent);
+  --color-muted-800: color-mix(in oklab, var(--foreground) 78%, transparent);
+  --color-muted-900: color-mix(in oklab, var(--foreground) 86%, transparent);
+  --color-muted: var(--color-muted-500);
+}
+
+:root {
+  --background: #fafafa;
+  --foreground: #171717;
+  --card: #ffffff;
+  --border: #e5e5e5;
+  --primary: #3396D7;
+  --primary-foreground: #ffffff;
+  --muted: var(--color-muted-500);
+  --danger: #dc2626;
+  --warning: #ea580c;
+  --info: #2563eb;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #fafafa;
+    --card: #171717;
+    --border: #262626;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+
+
+.neutral-button {
+  @apply inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm hover:bg-neutral-800 cursor-pointer;
+}
+
+.hover-button {
+  @apply cursor-pointer transition-all duration-300;
+}
+
+.chat-markdown li > p {
+  margin-bottom: 0;
+}
+
+.chat-markdown li + li {
+  margin-top: 0.375rem;
+}

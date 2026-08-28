@@ -1,0 +1,40 @@
+[project]
+name = "lgpdei-api"
+version = "0.1.0"
+description = "LGPDei FastAPI backend"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "beanie>=1.27.0",
+    "motor>=3.6.0",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.6.0",
+    "python-multipart>=0.0.17",
+    "slowapi>=0.1.9",
+    "langchain-anthropic>=0.3.0",
+    "langchain-core>=0.3.0",
+    "langgraph>=0.2.0",
+    "pypdf>=5.1.0",
+    "python-docx>=1.1.0",
+    "pyjwt>=2.10.0",
+    "bcrypt>=4.2.0",
+    "email-validator>=2.2.0",
+]
+
+[project.scripts]
+lgpdei = "app.__main__:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0.0", "httpx>=0.28.0", "pytest-asyncio>=0.24.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
