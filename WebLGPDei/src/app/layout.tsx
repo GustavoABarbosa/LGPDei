@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-
+import { Analytics } from "@vercel/analytics/next"
 import { AuthProvider } from "@/hooks/useAuth";
 
 import "./globals.css";
@@ -26,6 +26,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body>
+        <Analytics />
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
