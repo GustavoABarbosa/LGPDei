@@ -19,12 +19,10 @@ export default function PrivacyPage() {
       <LegalSection title="1. Controlador e encarregado">
         <ul>
           <li>
-            <strong>Controlador:</strong> [NOME DO CONTROLADOR], [CPF/CNPJ DO
-            CONTROLADOR], [ENDEREÇO DO CONTROLADOR].
+            <strong>Controlador:</strong> Gustavo Ariel Barbosa, 131.757.769-81, R. Cidade de Matelândia, 36. Adhemar Garcia, Joinville-SC, 89230-635.
           </li>
           <li>
-            <strong>Encarregado pelo tratamento de dados (DPO):</strong> [NOME
-            DO ENCARREGADO], e-mail [E-MAIL DO ENCARREGADO].
+            <strong>Encarregado pelo tratamento de dados (DPO):</strong> Gustavo Ariel Barbosa, e-mail contato.barbosa@outlook.com.
           </li>
         </ul>
       </LegalSection>
@@ -79,11 +77,6 @@ export default function PrivacyPage() {
             requisições e logs técnicos): <strong>legítimo interesse</strong>{" "}
             (art. 7º, IX).
           </li>
-          <li>
-            Guarda de registros de acesso exigida por lei, quando aplicável:{" "}
-            <strong>cumprimento de obrigação legal</strong> (art. 7º, II; Marco
-            Civil da Internet, art. 15).
-          </li>
         </ul>
       </LegalSection>
 
@@ -95,13 +88,10 @@ export default function PrivacyPage() {
           documentos dela. Essa transferência internacional se baseia no seu{" "}
           <strong>consentimento específico e em destaque</strong> (art. 33,
           VIII), dado ao criar a conta ou a primeira sessão. A Anthropic retém
-          esses dados conforme seus termos comerciais: [CONFIRMAR PRAZO DE
-          RETENÇÃO DA ANTHROPIC].
+          esses dados conforme seus termos comerciais: 30 dias após a sessão, se não for deletada.
         </p>
         <p>
-          Também usamos provedores de infraestrutura como operadores:
-          [PROVEDOR DE HOSPEDAGEM DA API], [PROVEDOR DO BANCO DE DADOS] e
-          [PROVEDOR DE HOSPEDAGEM DO SITE]. Não vendemos dados pessoais.
+          Também usamos provedores de infraestrutura como operadores: Render Services, Inc. (hospedagem da API, EUA), MongoDB, Inc. (banco de dados, hospedado em São Paulo) e Vercel Inc. (hospedagem do site, EUA).
         </p>
       </LegalSection>
 
@@ -122,12 +112,13 @@ export default function PrivacyPage() {
             documentos.
           </li>
           <li>
-            <strong>Logs técnicos:</strong> [PRAZO DE RETENÇÃO DOS LOGS, por
-            exemplo 6 meses (Marco Civil da Internet, art. 15)].
+            <strong>Logs técnicos:</strong> mantidos pelo provedor de
+            hospedagem por até 30 dias e depois apagados automaticamente.
           </li>
           <li>
-            <strong>Cópias de segurança (backups):</strong> [PRAZO DE RETENÇÃO
-            DOS BACKUPS].
+            <strong>Cópias de segurança (backups):</strong> não mantemos
+            cópias de segurança do banco de dados; dados excluídos são apagados
+            de forma definitiva.
           </li>
         </ul>
       </LegalSection>
@@ -164,8 +155,7 @@ export default function PrivacyPage() {
           </li>
         </ul>
         <p>
-          Outros pedidos podem ser feitos ao encarregado pelo e-mail [E-MAIL DO
-          ENCARREGADO]. Você também pode peticionar à Autoridade Nacional de
+          Outros pedidos podem ser feitos ao encarregado pelo e-mail contato.barbosa@outlook.com. Você também pode peticionar à Autoridade Nacional de
           Proteção de Dados (ANPD).
         </p>
       </LegalSection>
