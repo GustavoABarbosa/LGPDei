@@ -19,7 +19,6 @@ def create_chat_model() -> ChatAnthropic:
     return ChatAnthropic(
         model=settings.anthropic_model,
         api_key=settings.anthropic_api_key,
-        temperature=0.3,
         streaming=True,
     )
 
@@ -45,7 +44,7 @@ async def chat_node(state: GraphState) -> dict:
 async def assess_node(state: GraphState) -> dict:
     locale = state.get("locale", "pt")
     model = create_chat_model()
-    structured = model.with_structured_output(AssessmentOutput)
+    structured = model.with_structured_output(AssessmentOutput, method="json_schema")
 
     conversation_lines: list[str] = []
     for msg in state.get("messages", []):
