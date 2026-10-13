@@ -11,8 +11,7 @@ export default function TermsPage() {
   return (
     <LegalPage title="Termos de uso" updatedAt="13 de outubro de 2026">
       <p>
-        Estes termos regem o uso do LGPDei, oferecido por [NOME DO
-        CONTROLADOR], [CPF/CNPJ DO CONTROLADOR]. Ao criar uma conta ou iniciar
+        Estes termos regem o uso do LGPDei, oferecido por Gustavo Ariel Barbosa, 131.757.769-81. Ao criar uma conta ou iniciar
         uma sessão, você concorda com eles e com a{" "}
         <Link href="/privacidade" className="text-primary-600 underline">
           Política de privacidade
@@ -97,8 +96,9 @@ export default function TermsPage() {
       <LegalSection title="9. Alterações, lei aplicável e contato">
         <p>
           Mudanças relevantes serão informadas e exigirão novo aceite. Aplica-se
-          a lei brasileira; fica eleito o foro de [FORO/COMARCA]. Contato:
-          [E-MAIL DE CONTATO].
+          a lei brasileira; fica eleito o foro da Comarca de Joinville/SC,
+          ressalvado o direito do consumidor de propor ação no foro de seu
+          domicílio. Contato: contato.barbosa@outlook.com.
         </p>
       </LegalSection>
     </LegalPage>
