@@ -1,8 +1,8 @@
-from beanie.operators import In
+from beanie.operators import In, Pull
 from fastapi import UploadFile
 
 from app.config import settings
-from app.models import AssessmentSession, SessionDocument
+from app.models import AssessmentSession, Message, SessionDocument
 from app.models.user import PublicUser
 from app.services.document_parser import extract_document_text, is_supported_file
 from app.services.session_service import list_sessions_for_token, list_sessions_for_user
@@ -108,5 +108,15 @@ async def delete_session_document(session: AssessmentSession, doc_id: str) -> No
         raise HttpError(404, "Documento não encontrado")
 
     await doc.delete()
+    # Attachments are stored by file name, so keep it while another upload with the same name remains.
+    same_name = await SessionDocument.find_one(
+        SessionDocument.session_id == session.id,
+        SessionDocument.file_name == doc.file_name,
+    )
+    if not same_name:
+        await Message.find(
+            Message.session_id == session.id,
+            Message.attachments == doc.file_name,
+        ).update(Pull({Message.attachments: doc.file_name}))
     session.updated_at = utcnow()
     await session.save()

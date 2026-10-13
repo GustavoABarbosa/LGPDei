@@ -4,6 +4,7 @@ os.environ.setdefault("MONGODB_URI", "mongodb://127.0.0.1:27017/lgpdei_test")
 os.environ.setdefault("SESSION_SECRET", "test-session-secret-at-least-32-characters")
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret-at-least-32-characters-long")
 os.environ.setdefault("ANTHROPIC_API_KEY", "test-key")
+os.environ.setdefault("COOKIE_SECURE", "false")
 
 import pytest  # noqa: E402
 import pytest_asyncio  # noqa: E402

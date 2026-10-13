@@ -1,17 +1,22 @@
 import json
+import logging
 
 from fastapi import APIRouter, Depends, Header, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.config import settings
-from app.dependencies import get_owned_session
+from app.dependencies import get_consented_session
 from app.middleware.rate_limit import limiter
 from app.models import AssessmentSession
 from app.services.chat_service import locale_from_header, stream_chat_response
 from app.services.session_service import update_session_title_from_message
 
+logger = logging.getLogger(__name__)
+
 messages_router = APIRouter(prefix="/sessions/{session_id}/messages", tags=["messages"])
+
+STREAM_ERROR_MESSAGE = "Não foi possível gerar a resposta. Tente novamente."
 
 
 class StreamMessageBody(BaseModel):
@@ -25,7 +30,7 @@ async def stream_message(
     request: Request,
     session_id: str,
     body: StreamMessageBody,
-    session: AssessmentSession = Depends(get_owned_session),
+    session: AssessmentSession = Depends(get_consented_session),
     accept_language: str | None = Header(default=None),
     x_locale: str | None = Header(default=None),
 ):
@@ -42,8 +47,9 @@ async def stream_message(
             ):
                 yield f"data: {json.dumps({'content': chunk})}\n\n"
             yield "data: [DONE]\n\n"
-        except Exception as exc:
-            yield f"data: {json.dumps({'error': str(exc)})}\n\n"
+        except Exception:
+            logger.exception("Chat stream failed for session %s", session.id)
+            yield f"data: {json.dumps({'error': STREAM_ERROR_MESSAGE})}\n\n"
 
     return StreamingResponse(
         event_generator(),

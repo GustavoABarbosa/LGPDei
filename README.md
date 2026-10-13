@@ -40,8 +40,12 @@ flowchart LR
 
 ## Features
 
-- Anonymous sessions identified by an HttpOnly cookie; session data expires after 72 hours (MongoDB TTL index).
-- Optional account (JWT in an HttpOnly cookie); guest sessions are linked to the account on sign-up or login.
+- Anonymous sessions identified by an HttpOnly cookie that is reused for every guest session of the browser; guest
+  data expires after 72 hours (MongoDB TTL index).
+- Optional account (JWT in an HttpOnly cookie); guest sessions are adopted by the account on sign-up or login and
+  account sessions are kept until the user deletes them.
+- Privacy controls: consent capture, profile correction, data export, account deletion, privacy notice and terms (see
+  [LGPD compliance](#lgpd-compliance)).
 - Chat with Server-Sent Events streaming, in Portuguese or English.
 - Document upload (PDF, DOCX, TXT, MD, CSV) with per-file and per-session limits; extracted text grounds the answers.
 - Compliance report: overall risk, 0-100 score, findings with severity, legal reference, evidence and recommendation.
@@ -52,10 +56,11 @@ flowchart LR
 Requirements: Python 3.12, Node.js 24, Docker, an Anthropic API key.
 
 ```bash
-docker compose up -d                      # MongoDB on localhost:27017
+cp .env.example .env                      # MongoDB root credentials for docker compose
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d mongo   # MongoDB on 127.0.0.1:27017
 
 cd ApiLGPDei
-cp .env.example .env                      # set ANTHROPIC_API_KEY, SESSION_SECRET, JWT_SECRET
+cp .env.example .env                      # set ANTHROPIC_API_KEY, SESSION_SECRET, JWT_SECRET and the Mongo credentials
 python -m pip install -e ".[dev]"
 python -m app                             # http://localhost:3334
 
@@ -65,21 +70,26 @@ npm install
 npm run dev                               # http://localhost:3000
 ```
 
-Or run everything in containers: `docker compose --profile app up --build`.
+Or run everything in containers: `docker compose --profile app up --build`. MongoDB runs with authentication
+(`MONGO_ROOT_USERNAME` / `MONGO_ROOT_PASSWORD` from the root `.env`) and is only published, on `127.0.0.1`, when
+`docker-compose.dev.yml` is included. The credentials only apply when the data volume is first created; an existing
+volume created without them must be recreated (`docker compose down -v`, which deletes its data).
 
 ### API environment variables
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `MONGODB_URI` | `mongodb://127.0.0.1:27017/lgpdei` | Connection string including the database name |
+| `MONGODB_URI` | `mongodb://127.0.0.1:27017/lgpdei` | Connection string including the database name and credentials |
 | `SESSION_SECRET` | required | HMAC key for anonymous session tokens |
 | `JWT_SECRET` | required | Signing key for account tokens |
 | `JWT_EXPIRES_DAYS` | `7` | Account cookie lifetime |
 | `SESSION_TTL_HOURS` | `72` | Anonymous session lifetime |
 | `ANTHROPIC_API_KEY` | required | Claude API key |
-| `ANTHROPIC_MODEL` | `claude-haiku-4-5` | Model used by both graph nodes |
+| `ANTHROPIC_MODEL` | `claude-haiku-5-5` | Model used by both graph nodes |
 | `CORS_ORIGINS` | `http://localhost:3000` | Comma-separated web origins |
-| `COOKIE_SAMESITE` / `COOKIE_SECURE` | `lax` / `false` | Use `none` / `true` when web and API are on different sites |
+| `COOKIE_SAMESITE` / `COOKIE_SECURE` | `lax` / `true` | Set `COOKIE_SECURE=false` only for local http; use `none` / `true` when web and API are on different sites |
+| `FORWARDED_ALLOW_IPS` | `127.0.0.1` | Docker image: proxy IPs trusted for `X-Forwarded-For` (client IP for rate limits) |
+| `RATE_LIMIT_AUTH_PER_MINUTE` | `10` | Per IP, for each of login, register and the `/auth/me` profile, export and deletion routes |
 | `RATE_LIMIT_SESSIONS_PER_HOUR` | `5` | Per IP |
 | `RATE_LIMIT_MESSAGES_PER_HOUR` | `30` | Per IP |
 | `RATE_LIMIT_UPLOADS_PER_HOUR` | `10` | Per IP |
@@ -94,9 +104,12 @@ All routes are under `/api`; interactive docs at `/docs`.
 | Method | Path | Description |
 | --- | --- | --- |
 | `GET` | `/health` | Health check |
-| `POST` | `/auth/register`, `/auth/login`, `/auth/logout` | Account cookie |
+| `POST` | `/auth/register`, `/auth/login`, `/auth/logout` | Account cookie; register requires `consent: true`; logout revokes all tokens |
 | `GET` | `/auth/me` | Current user |
-| `GET` `POST` | `/sessions` | List / create sessions |
+| `PATCH` | `/auth/me` | Update `name` / `email` (409 if the e-mail is taken; an e-mail change revokes other tokens) |
+| `DELETE` | `/auth/me` | Delete the account and all its data; body `{ "password" }` |
+| `GET` | `/auth/me/export` | JSON download with profile, consent, sessions, messages, reports and document text |
+| `GET` `POST` | `/sessions` | List / create sessions; a guest's first session requires `consent: true` |
 | `GET` `PATCH` `DELETE` | `/sessions/{id}` | Session detail, rename, delete |
 | `POST` | `/sessions/{id}/messages/stream` | Send a message, SSE response |
 | `POST` `DELETE` | `/sessions/{id}/documents[/{docId}]` | Upload / remove a document |
@@ -104,9 +117,11 @@ All routes are under `/api`; interactive docs at `/docs`.
 
 ## Quality
 
-- `ApiLGPDei`: `pytest` runs 25 tests against a real MongoDB with the LLM replaced by a fake chat model: auth, session
-  ownership, uploads, rate limiting, token streaming through the graph and the structured assessment.
-- `WebLGPDei`: `npm run lint` (ESLint flat config with the React Compiler rules) and `npm run typecheck`.
+- `ApiLGPDei`: `pytest` runs 45 tests against a real MongoDB with the LLM replaced by a fake chat model: auth, token
+  revocation, consent, retention, account export and deletion, session ownership, uploads, rate limiting, token
+  streaming through the graph and the structured assessment.
+- `WebLGPDei`: `npm run lint` (ESLint flat config with the React Compiler rules), `npm run typecheck` and
+  `npm run build`.
 - GitHub Actions runs both suites and builds both Docker images on every push and pull request.
 
 ## Deployment
@@ -114,7 +129,19 @@ All routes are under `/api`; interactive docs at `/docs`.
 Both apps ship with a Dockerfile (`ApiLGPDei/Dockerfile`, `WebLGPDei/Dockerfile` using Next.js standalone output).
 A low-cost setup is MongoDB Atlas (free tier), the API on Render, Fly.io or Railway, and the web app on Vercel. When
 the web and API live on different sites, set `COOKIE_SAMESITE=none`, `COOKIE_SECURE=true` and add the web origin to
-`CORS_ORIGINS`.
+`CORS_ORIGINS`. Set `FORWARDED_ALLOW_IPS` to the platform's proxy address so rate limits see the real client IP.
+
+## LGPD compliance
+
+| Topic | Implementation |
+| --- | --- |
+| Transparency | `/privacidade` (privacy notice) and `/termos` (terms), linked from the footer, the auth page and every consent checkbox. Fill in the `[PLACEHOLDERS]` (controller, DPO contact, providers, log and backup retention, venue) before going live. |
+| Consent (art. 7, I and art. 33, VIII) | Unchecked checkbox covering terms, privacy notice, transfer to Anthropic (USA) and an 18+ statement. Required on register (`User.consent_version` / `consent_at`) and before a guest's first session (stored on the session; later guest sessions of the same browser inherit it). Uploads and messages to a guest session without current consent are rejected. Bump `CONSENT_VERSION` in `app/consent.py` whenever the texts change. |
+| Sensitive data (art. 11) | The consent gate and the chat input warn users not to send sensitive or third-party personal data. |
+| Retention | Guest sessions, messages and documents expire 72 h after creation (TTL index). Account sessions have `expires_at = null` and are kept until deleted. Only extracted document text is stored, never the file. |
+| Data subject rights (art. 18) | Access and portability: "Baixar meus dados". Correction: "Editar perfil". Deletion: session / file delete (with confirmation) and "Excluir conta" (password required; revoking consent = deleting the account). |
+| Security | bcrypt, HttpOnly cookies (`Secure` by default), JWT `token_version` revoked on logout, e-mail change and deletion, rate limits on auth routes, generic streaming errors (details only in server logs), MongoDB with authentication and no public port. |
+| Logs | `app/log_config.json` formats the uvicorn access log without client IPs; IPs are only held in memory by the rate limiter. |
 
 ## Legal notice
 

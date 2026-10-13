@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { ChatMessageBubble } from "@/components/chat/ChatMessage";
 import { MarkdownContent } from "@/components/chat/MarkdownContent";
+import { SensitiveDataNotice } from "@/components/consent/SensitiveDataNotice";
 import type { ChatMessage } from "@/types";
 
 const WELCOME_MESSAGE = "Como posso te ajudar a cumprir a LGPD?";
@@ -43,16 +44,19 @@ export function ChatPanel({
   }, [isEmpty, messages, streamingContent, sending]);
 
   const chatInput = (
-    <ChatInput
-      key={sessionId}
-      onSend={onSend}
-      onAssess={onAssess}
-      sending={sending}
-      disabled={messagesLimited}
-      disabledMessage={messageLimitMessage}
-      uploadDisabled={uploadsLimited}
-      uploadDisabledMessage={uploadLimitMessage}
-    />
+    <>
+      <ChatInput
+        key={sessionId}
+        onSend={onSend}
+        onAssess={onAssess}
+        sending={sending}
+        disabled={messagesLimited}
+        disabledMessage={messageLimitMessage}
+        uploadDisabled={uploadsLimited}
+        uploadDisabledMessage={uploadLimitMessage}
+      />
+      <SensitiveDataNotice className="mt-2 px-3 text-center" />
+    </>
   );
 
   if (isEmpty) {

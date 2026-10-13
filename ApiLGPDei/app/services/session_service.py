@@ -1,7 +1,9 @@
 from beanie import PydanticObjectId
+from beanie.operators import In, Set
 
 from app.models import AssessmentSession, Message, SessionDocument
 from app.models.user import PublicUser
+from app.utils.session_token import hash_session_token
 from app.utils.time import utcnow
 
 
@@ -45,8 +47,6 @@ async def get_session_detail(session: AssessmentSession) -> dict:
 
 
 async def list_sessions_for_token(session_token: str) -> list[AssessmentSession]:
-    from app.utils.session_token import hash_session_token
-
     token_hash = hash_session_token(session_token)
     return await AssessmentSession.find(
         AssessmentSession.session_token_hash == token_hash
@@ -60,18 +60,29 @@ async def list_sessions_for_user(user: PublicUser) -> list[AssessmentSession]:
 
 
 async def link_sessions_for_token(session_token: str, user_id: str) -> None:
-    from app.utils.session_token import hash_session_token
-
-    token_hash = hash_session_token(session_token)
+    """Adopts the guest sessions of this browser; account sessions are kept until the user deletes them."""
     sessions = await AssessmentSession.find(
-        AssessmentSession.session_token_hash == token_hash,
-        AssessmentSession.user_id == None,
+        AssessmentSession.session_token_hash == hash_session_token(session_token),
+        AssessmentSession.user_id == None,  # noqa: E711
     ).to_list()
+    if not sessions:
+        return
 
-    user_oid = PydanticObjectId(user_id)
-    for session in sessions:
-        session.user_id = user_oid
-        await session.save()
+    session_ids = [session.id for session in sessions]
+    await AssessmentSession.find(In(AssessmentSession.id, session_ids)).update(
+        Set({AssessmentSession.user_id: PydanticObjectId(user_id), AssessmentSession.expires_at: None})
+    )
+    await Message.find(In(Message.session_id, session_ids)).update(Set({Message.expires_at: None}))
+    await SessionDocument.find(In(SessionDocument.session_id, session_ids)).update(
+        Set({SessionDocument.expires_at: None})
+    )
+
+
+async def delete_sessions(session_ids: list[PydanticObjectId]) -> None:
+    # Children first, so a failure never leaves messages or documents without their session.
+    await Message.find(In(Message.session_id, session_ids)).delete()
+    await SessionDocument.find(In(SessionDocument.session_id, session_ids)).delete()
+    await AssessmentSession.find(In(AssessmentSession.id, session_ids)).delete()
 
 
 async def update_session_title_from_message(session: AssessmentSession, content: str) -> None:

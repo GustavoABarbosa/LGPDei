@@ -15,7 +15,11 @@ function isEmptySession(detail: SessionDetail) {
   return detail.messages.length === 0;
 }
 
-export function useSessions() {
+/**
+ * Guests must consent before their first session is created, so for them an empty session list
+ * leaves no active session (the consent gate is shown) instead of creating one automatically.
+ */
+export function useSessions(signedIn: boolean) {
   const [sessions, setSessions] = useState<SessionListItem[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [sessionDetail, setSessionDetail] = useState<SessionDetail | null>(null);
@@ -23,10 +27,12 @@ export function useSessions() {
 
   const sessionDetailRef = useRef(sessionDetail);
   const activeSessionIdRef = useRef(activeSessionId);
+  const signedInRef = useRef(signedIn);
   useEffect(() => {
     sessionDetailRef.current = sessionDetail;
     activeSessionIdRef.current = activeSessionId;
-  }, [sessionDetail, activeSessionId]);
+    signedInRef.current = signedIn;
+  }, [sessionDetail, activeSessionId, signedIn]);
 
   const loadSessions = useCallback(async () => {
     const data = await apiFetch<{ sessions: SessionListItem[] }>("/sessions");
@@ -60,7 +66,7 @@ export function useSessions() {
     [],
   );
 
-  const createSession = useCallback(async () => {
+  const createSession = useCallback(async (options?: { consent?: boolean }) => {
     const current = sessionDetailRef.current;
     if (current && isEmptySession(current)) {
       return current;
@@ -83,7 +89,7 @@ export function useSessions() {
 
       const detail = await apiFetch<SessionDetail>("/sessions", {
         method: "POST",
-        body: JSON.stringify({ locale: "pt" }),
+        body: JSON.stringify({ locale: "pt", consent: options?.consent ?? false }),
       });
       setSessionDetail(detail);
       setActiveSessionId(detail.session.id);
@@ -112,7 +118,7 @@ export function useSessions() {
       setActiveSessionId(null);
       sessionDetailRef.current = null;
       activeSessionIdRef.current = null;
-      await createSession();
+      if (signedInRef.current) await createSession();
     },
     [createSession, loadSession, loadSessions],
   );
@@ -148,10 +154,9 @@ export function useSessions() {
     setSessionDetail(null);
   }, []);
 
-  const resetAfterSignOut = useCallback(async () => {
+  const resetAfterSignOut = useCallback(() => {
     resetSessions();
-    return createSession();
-  }, [createSession, resetSessions]);
+  }, [resetSessions]);
 
   const reloadAfterSignIn = useCallback(async () => {
     const list = await loadSessions();
@@ -181,7 +186,7 @@ export function useSessions() {
     if (list.length > 0) {
       return loadSession(list[0].id);
     }
-    return createSession();
+    return signedInRef.current ? createSession() : null;
   }, [createSession, loadSession, loadSessions]);
 
   return {

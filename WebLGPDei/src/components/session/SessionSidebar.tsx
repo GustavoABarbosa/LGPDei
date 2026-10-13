@@ -1,8 +1,6 @@
 "use client";
 
-import { SignOutIcon, UserCircleIcon } from "@phosphor-icons/react";
 import {
-  ChevronUp,
   FileText,
   Loader2,
   MoreHorizontal,
@@ -15,6 +13,8 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
+import { UserMenu } from "@/components/account/UserMenu";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsClient } from "@/hooks/useIsClient";
 import { cn } from "@/lib/utils";
@@ -41,6 +41,7 @@ type Props = {
   documentsLoading?: boolean;
   onLoadDocuments: () => void;
   onDeleteDocument: (docId: string, sessionId: string) => void | Promise<void>;
+  onError: (message: string) => void;
   onCloseMobile?: () => void;
   className?: string;
 };
@@ -58,14 +59,16 @@ export function SessionSidebar({
   documentsLoading,
   onLoadDocuments,
   onDeleteDocument,
+  onError,
   onCloseMobile,
   className,
 }: Props) {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<SidebarTab>("sessions");
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [deletingDocId, setDeletingDocId] = useState<string | null>(null);
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
+  const [sessionToDelete, setSessionToDelete] = useState<SessionListItem | null>(null);
+  const [documentToDelete, setDocumentToDelete] = useState<UserDocument | null>(null);
   const [menuSessionId, setMenuSessionId] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<SessionMenuPosition | null>(
     null,
@@ -74,26 +77,9 @@ export function SessionSidebar({
   const [renameValue, setRenameValue] = useState("");
   const [renaming, setRenaming] = useState(false);
   const portalReady = useIsClient();
-  const userMenuRef = useRef<HTMLDivElement>(null);
   const sessionMenuRef = useRef<HTMLDivElement>(null);
   const sessionMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (!userMenuOpen) return;
-
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        userMenuRef.current &&
-        !userMenuRef.current.contains(event.target as Node)
-      ) {
-        setUserMenuOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [userMenuOpen]);
 
   useEffect(() => {
     if (!menuSessionId) return;
@@ -178,9 +164,13 @@ export function SessionSidebar({
     }
   }
 
-  async function handleDeleteSession(sessionId: string) {
+  function confirmDeleteSession(session: SessionListItem) {
     setMenuSessionId(null);
     setMenuPosition(null);
+    setSessionToDelete(session);
+  }
+
+  async function handleDeleteSession(sessionId: string) {
     setDeletingSessionId(sessionId);
     try {
       await onDelete(sessionId);
@@ -422,7 +412,7 @@ export function SessionSidebar({
                           <button
                             type="button"
                             role="menuitem"
-                            onClick={() => void handleDeleteSession(session.id)}
+                            onClick={() => confirmDeleteSession(session)}
                             className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-danger hover:bg-neutral-100 dark:hover:bg-neutral-800"
                           >
                             <Trash2 className="size-3.5" />
@@ -464,7 +454,7 @@ export function SessionSidebar({
                   </div>
                   <button
                     type="button"
-                    onClick={() => void handleDeleteDocument(document.id, document.sessionId)}
+                    onClick={() => setDocumentToDelete(document)}
                     disabled={deletingDocId === document.id}
                     className="shrink-0 rounded-md p-1 text-muted hover:bg-neutral-200 hover:text-danger dark:hover:bg-neutral-800 disabled:opacity-50"
                     aria-label={`Excluir ${document.fileName}`}
@@ -484,52 +474,15 @@ export function SessionSidebar({
 
       <div className="border-t border-[var(--border)] p-3">
         {user ? (
-          <div ref={userMenuRef} className="relative">
-            <button
-              type="button"
-              onClick={() => setUserMenuOpen((open) => !open)}
-              aria-expanded={userMenuOpen}
-              aria-haspopup="menu"
-              className="flex w-full items-center gap-2 rounded-lg bg-neutral-100 px-3 py-2 text-left transition-colors hover:bg-neutral-200 dark:bg-neutral-900 dark:hover:bg-neutral-800"
-            >
-              <UserCircleIcon size={20} className="shrink-0 text-muted" />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{user.name}</p>
-                <p className="truncate text-xs text-muted">{user.email}</p>
-              </div>
-              <ChevronUp
-                className={cn(
-                  "h-4 w-4 shrink-0 text-muted transition-transform",
-                  userMenuOpen ? "rotate-180" : "",
-                )}
-              />
-            </button>
-
-            {userMenuOpen && (
-              <div
-                role="menu"
-                className="absolute inset-x-0 bottom-full mb-2 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--card)] shadow-lg"
-              >
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setUserMenuOpen(false);
-                    void signOut();
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-muted hover:bg-neutral-100 dark:hover:bg-neutral-800/25"
-                >
-                  <SignOutIcon size={16} />
-                  Sair
-                </button>
-              </div>
-            )}
-          </div>
+          <UserMenu user={user} onError={onError} />
         ) : (
           <div className="space-y-4">
             <div className="text-sm">
-              <div className="font-medium mb-2">Entre para salvar suas sessões</div>
-              <div className="text-xs text-muted">Entre para salvar suas sessões e retornar sempre que quiser.</div>
+              <div className="font-medium mb-2">Entre para manter suas sessões</div>
+              <div className="text-xs text-muted">
+                Sem conta, as sessões são apagadas automaticamente após 72 horas.
+                Com conta, ficam salvas até você excluí-las.
+              </div>
             </div>
             <div className="flex">
               <Link
@@ -542,6 +495,39 @@ export function SessionSidebar({
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={sessionToDelete !== null}
+        title="Excluir sessão"
+        description={
+          <>
+            A sessão <strong>{sessionToDelete?.title}</strong> será apagada
+            permanentemente, com todas as mensagens, relatórios e documentos.
+          </>
+        }
+        confirmLabel="Excluir"
+        onConfirm={() =>
+          sessionToDelete ? handleDeleteSession(sessionToDelete.id) : Promise.resolve()
+        }
+        onClose={() => setSessionToDelete(null)}
+      />
+      <ConfirmDialog
+        open={documentToDelete !== null}
+        title="Excluir arquivo"
+        description={
+          <>
+            O arquivo <strong>{documentToDelete?.fileName}</strong> e o texto
+            extraído dele serão apagados permanentemente.
+          </>
+        }
+        confirmLabel="Excluir"
+        onConfirm={() =>
+          documentToDelete
+            ? handleDeleteDocument(documentToDelete.id, documentToDelete.sessionId)
+            : Promise.resolve()
+        }
+        onClose={() => setDocumentToDelete(null)}
+      />
     </aside>
   );
 }

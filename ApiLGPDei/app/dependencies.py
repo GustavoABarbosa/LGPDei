@@ -1,17 +1,12 @@
+from beanie import PydanticObjectId
 from fastapi import Cookie, Depends
 
+from app.consent import CONSENT_VERSION
 from app.models import AssessmentSession
-from app.models.user import PublicUser
-from app.services.auth_service import get_user_by_id
+from app.models.user import PublicUser, User
+from app.services.auth_service import get_user_from_token, to_public_user
 from app.utils.http_error import HttpError
-from app.utils.jwt import decode_access_token
 from app.utils.session_token import hash_session_token
-
-
-async def get_session_token(session_token: str | None = Cookie(default=None)) -> str:
-    if not session_token:
-        raise HttpError(401, "Sessão não autenticada")
-    return session_token
 
 
 async def get_optional_session_token(
@@ -20,13 +15,16 @@ async def get_optional_session_token(
     return session_token
 
 
-async def get_current_user(
+async def get_current_account(
     auth_token: str | None = Cookie(default=None, alias="auth_token"),
-) -> PublicUser:
+) -> User:
     if not auth_token:
         raise HttpError(401, "Não autorizado")
-    user_id = decode_access_token(auth_token)
-    return await get_user_by_id(user_id)
+    return await get_user_from_token(auth_token)
+
+
+async def get_current_user(user: User = Depends(get_current_account)) -> PublicUser:
+    return to_public_user(user)
 
 
 async def get_optional_user(
@@ -35,8 +33,7 @@ async def get_optional_user(
     if not auth_token:
         return None
     try:
-        user_id = decode_access_token(auth_token)
-        return await get_user_by_id(user_id)
+        return to_public_user(await get_user_from_token(auth_token))
     except HttpError:
         return None
 
@@ -46,8 +43,6 @@ async def get_owned_session(
     session_token: str | None = Depends(get_optional_session_token),
     user: PublicUser | None = Depends(get_optional_user),
 ) -> AssessmentSession:
-    from beanie import PydanticObjectId
-
     try:
         oid = PydanticObjectId(session_id)
     except Exception as exc:
@@ -64,3 +59,12 @@ async def get_owned_session(
         return session
 
     raise HttpError(403, "Acesso negado à sessão")
+
+
+async def get_consented_session(
+    session: AssessmentSession = Depends(get_owned_session),
+) -> AssessmentSession:
+    """Guests must have accepted the current terms on the session before sending data to it."""
+    if session.user_id is None and session.consent_version != CONSENT_VERSION:
+        raise HttpError(403, "É necessário aceitar os termos de uso e a política de privacidade")
+    return session

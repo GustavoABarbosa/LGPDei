@@ -1,10 +1,13 @@
+# Credentials come from ./.env (see .env.example). MongoDB is only reachable inside the compose network;
+# for local development outside containers, add docker-compose.dev.yml to expose it on 127.0.0.1.
 services:
   mongo:
     image: mongo:7
     container_name: lgpdei-mongo
     restart: unless-stopped
-    ports:
-      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?set MONGO_ROOT_USERNAME in .env}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?set MONGO_ROOT_PASSWORD in .env}
     volumes:
       - lgpdei_mongo_data:/data/db
 
@@ -14,7 +17,7 @@ services:
     build: ./ApiLGPDei
     env_file: ./ApiLGPDei/.env
     environment:
-      MONGODB_URI: mongodb://mongo:27017/lgpdei
+      MONGODB_URI: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/lgpdei?authSource=admin
     ports:
       - "3334:3334"
     depends_on:

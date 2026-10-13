@@ -13,11 +13,12 @@ class Settings(BaseSettings):
     jwt_expires_days: int = 7
     session_ttl_hours: int = 72
     anthropic_api_key: str
-    anthropic_model: str = "claude-haiku-4-5"
+    anthropic_model: str = "claude-haiku-5-5"
     cors_origins: str = "http://localhost:3000"
     # Web and API on different sites need SameSite=None, which browsers only accept with Secure.
     cookie_samesite: Literal["lax", "strict", "none"] = "lax"
-    cookie_secure: bool = False
+    cookie_secure: bool = True
+    rate_limit_auth_per_minute: int = 10
     rate_limit_sessions_per_hour: int = 5
     rate_limit_messages_per_hour: int = 30
     rate_limit_uploads_per_hour: int = 10

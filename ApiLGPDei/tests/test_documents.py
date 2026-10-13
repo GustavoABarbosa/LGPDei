@@ -1,13 +1,4 @@
-async def create_session_id(client) -> str:
-    response = await client.post("/api/sessions", json={"locale": "pt"})
-    return response.json()["session"]["id"]
-
-
-async def upload(client, session_id, name="politica.txt", content=b"Coletamos CPF e e-mail.", mime="text/plain"):
-    return await client.post(
-        f"/api/sessions/{session_id}/documents",
-        files={"file": (name, content, mime)},
-    )
+from tests.helpers import create_session_id, send, upload
 
 
 async def test_upload_list_and_delete(client):
@@ -26,6 +17,18 @@ async def test_upload_list_and_delete(client):
 
     assert (await client.delete(f"/api/sessions/{session_id}/documents/{doc['id']}")).status_code == 200
     assert (await client.get(f"/api/sessions/{session_id}")).json()["documents"] == []
+
+
+async def test_deleting_document_removes_it_from_message_attachments(client):
+    session_id = await create_session_id(client)
+    doc = (await upload(client, session_id)).json()["document"]
+    await upload(client, session_id, name="contrato.txt")
+    await send(client, session_id, "Analise os arquivos", attachments=["politica.txt", "contrato.txt"])
+
+    await client.delete(f"/api/sessions/{session_id}/documents/{doc['id']}")
+
+    user_message = (await client.get(f"/api/sessions/{session_id}")).json()["messages"][0]
+    assert user_message["attachments"] == ["contrato.txt"]
 
 
 async def test_unsupported_file_is_rejected(client):

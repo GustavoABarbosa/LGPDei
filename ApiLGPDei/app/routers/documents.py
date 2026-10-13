@@ -1,7 +1,12 @@
 from fastapi import APIRouter, Depends, File, Request, UploadFile
 
 from app.config import settings
-from app.dependencies import get_optional_session_token, get_optional_user, get_owned_session
+from app.dependencies import (
+    get_consented_session,
+    get_optional_session_token,
+    get_optional_user,
+    get_owned_session,
+)
 from app.middleware.rate_limit import limiter
 from app.models import AssessmentSession
 from app.models.user import PublicUser
@@ -30,7 +35,7 @@ async def upload_document(
     request: Request,
     session_id: str,
     file: UploadFile = File(...),
-    session: AssessmentSession = Depends(get_owned_session),
+    session: AssessmentSession = Depends(get_consented_session),
 ):
     doc = await upload_session_document(session, file)
     return {"document": doc}

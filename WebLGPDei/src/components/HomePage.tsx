@@ -1,9 +1,11 @@
 "use client";
 
 import { Loader2, Menu } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ChatPanel } from "@/components/chat/ChatPanel";
+import { GuestConsentGate } from "@/components/consent/GuestConsentGate";
 import { ErrorBanner } from "@/components/ErrorBanner";
 import { GuestSessionBanner } from "@/components/GuestSessionBanner";
 import { SessionSidebar } from "@/components/session/SessionSidebar";
@@ -29,7 +31,7 @@ export function HomePage() {
     ensureActiveSession,
     resetAfterSignOut,
     reloadAfterSignIn,
-  } = useSessions();
+  } = useSessions(user !== null);
 
   const { sending, streamingContent, displayMessages, sendMessage, sendAssessmentRequest } =
     useChat(sessionDetail, loadSession);
@@ -62,7 +64,7 @@ export function HomePage() {
   const uploadLimitMessage = getMessage("uploads");
 
   useEffect(() => {
-    if (bootstrappedRef.current) return;
+    if (authLoading || bootstrappedRef.current) return;
     bootstrappedRef.current = true;
 
     void (async () => {
@@ -77,7 +79,7 @@ export function HomePage() {
         setBootstrapping(false);
       }
     })();
-  }, [ensureActiveSession, handleError]);
+  }, [authLoading, ensureActiveSession, handleError]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -97,7 +99,7 @@ export function HomePage() {
       setError(null);
       try {
         if (signedOut) {
-          await resetAfterSignOut();
+          resetAfterSignOut();
         } else {
           await reloadAfterSignIn();
         }
@@ -192,6 +194,18 @@ export function HomePage() {
     }
   }, [createSession, currentSessionEmpty, handleError, isLimited]);
 
+  const handleGuestConsent = useCallback(async () => {
+    setError(null);
+    try {
+      await createSession({ consent: true });
+    } catch (err) {
+      const limitMessage = handleError(err, "sessions");
+      setError(
+        limitMessage ?? getApiErrorMessage(err, "Falha ao criar sessão"),
+      );
+    }
+  }, [createSession, handleError]);
+
   const handleDeleteSession = useCallback(
     async (sessionId: string) => {
       setError(null);
@@ -246,13 +260,14 @@ export function HomePage() {
             setSidebarOpen(false);
           }}
           onCreate={() => void handleCreateSession()}
-          onDelete={(id) => void handleDeleteSession(id)}
+          onDelete={handleDeleteSession}
           onRename={(id, title) => handleRenameSession(id, title)}
-          createDisabled={sessionsLimited || currentSessionEmpty || currentSessionEmpty }
+          createDisabled={sessionsLimited || currentSessionEmpty}
           documents={allDocuments}
           documentsLoading={loadingAll}
           onLoadDocuments={handleLoadDocuments}
-          onDeleteDocument={(docId, sessionId) => void handleDeleteDocument(docId, sessionId)}
+          onDeleteDocument={handleDeleteDocument}
+          onError={setError}
           onCloseMobile={() => setSidebarOpen(false)}
           className={cn(
             "fixed inset-y-0 left-0 z-50 md:relative md:z-auto",
@@ -290,6 +305,8 @@ export function HomePage() {
               messageLimitMessage={messageLimitMessage}
               uploadLimitMessage={uploadLimitMessage}
             />
+          ) : !user ? (
+            <GuestConsentGate onAccept={handleGuestConsent} />
           ) : (
             <div className="flex flex-1 items-center justify-center text-muted">
               Nenhuma sessão ativa
@@ -299,8 +316,16 @@ export function HomePage() {
       </div>
 
       <footer className="border-t border-border bg-card px-4 py-2 text-center text-xs text-muted">
-        Ferramenta educativa. Não substitui assessoria jurídica. Dados enviados à API
-        Anthropic conforme política de privacidade.
+        Ferramenta educativa. Não substitui assessoria jurídica. Mensagens e documentos
+        são enviados à Anthropic (EUA) para gerar as respostas. Veja a{" "}
+        <Link href="/privacidade" className="underline hover:text-foreground">
+          Política de privacidade
+        </Link>{" "}
+        e os{" "}
+        <Link href="/termos" className="underline hover:text-foreground">
+          Termos de uso
+        </Link>
+        .
       </footer>
     </div>
   );

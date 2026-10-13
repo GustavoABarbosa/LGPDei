@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 
+import { ConsentCheckbox } from "@/components/consent/ConsentCheckbox";
 import { ErrorBanner } from "@/components/ErrorBanner";
 import { getApiErrorMessage, useAuth } from "@/hooks/useAuth";
 import {
@@ -36,6 +37,7 @@ export function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [consent, setConsent] = useState(false);
   const [touched, setTouched] = useState(EMPTY_TOUCHED);
   const [submitAttempted, setSubmitAttempted] = useState(false);
 
@@ -72,13 +74,14 @@ export function AuthPage() {
     setSubmitAttempted(true);
 
     if (hasAuthErrors(fieldErrors)) return;
+    if (mode === "register" && !consent) return;
 
     setLoading(true);
     try {
       if (mode === "login") {
         await signIn(email.trim(), password);
       } else {
-        await signUp(name.trim(), email.trim(), password);
+        await signUp(name.trim(), email.trim(), password, consent);
       }
       router.push("/");
     } catch (err) {
@@ -227,6 +230,18 @@ export function AuthPage() {
             />
           )}
 
+          {mode === "register" && (
+            <ConsentCheckbox
+              checked={consent}
+              onChange={setConsent}
+              error={
+                submitAttempted && !consent
+                  ? "É necessário aceitar para criar a conta"
+                  : undefined
+              }
+            />
+          )}
+
           {error && <ErrorBanner message={error} inline />}
 
           <button
@@ -262,6 +277,16 @@ export function AuthPage() {
         <Link href="/" className="mt-4 block text-center text-xs text-muted hover:underline">
           Continuar sem conta
         </Link>
+
+        <p className="mt-4 text-center text-xs text-muted">
+          <Link href="/privacidade" className="hover:underline">
+            Política de privacidade
+          </Link>
+          {" · "}
+          <Link href="/termos" className="hover:underline">
+            Termos de uso
+          </Link>
+        </p>
       </div>
     </div>
   );

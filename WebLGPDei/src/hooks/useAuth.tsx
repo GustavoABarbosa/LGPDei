@@ -21,9 +21,16 @@ type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (name: string, email: string, password: string) => Promise<void>;
+  signUp: (
+    name: string,
+    email: string,
+    password: string,
+    consent: boolean,
+  ) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  updateProfile: (profile: { name: string; email: string }) => Promise<void>;
+  deleteAccount: (password: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -60,10 +67,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signUp = useCallback(
-    async (name: string, email: string, password: string) => {
+    async (name: string, email: string, password: string, consent: boolean) => {
       const data = await apiFetch<{ user: AuthUser }>("/auth/register", {
         method: "POST",
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, email, password, consent }),
       });
       setUser(data.user);
     },
@@ -75,9 +82,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }, []);
 
+  const updateProfile = useCallback(
+    async (profile: { name: string; email: string }) => {
+      const data = await apiFetch<{ user: AuthUser }>("/auth/me", {
+        method: "PATCH",
+        body: JSON.stringify(profile),
+      });
+      setUser(data.user);
+    },
+    [],
+  );
+
+  const deleteAccount = useCallback(async (password: string) => {
+    await apiFetch("/auth/me", {
+      method: "DELETE",
+      body: JSON.stringify({ password }),
+    });
+    setUser(null);
+  }, []);
+
   const value = useMemo(
-    () => ({ user, loading, signIn, signUp, signOut, refreshUser }),
-    [user, loading, signIn, signUp, signOut, refreshUser],
+    () => ({
+      user,
+      loading,
+      signIn,
+      signUp,
+      signOut,
+      refreshUser,
+      updateProfile,
+      deleteAccount,
+    }),
+    [user, loading, signIn, signUp, signOut, refreshUser, updateProfile, deleteAccount],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
