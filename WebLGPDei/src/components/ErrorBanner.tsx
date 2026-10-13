@@ -14,17 +14,19 @@ export function ErrorBanner({ message, inline = false }: Props) {
     <div
       role="alert"
       className={cn(
-        "flex items-start gap-2 rounded-2xl border border-red-500/25 bg-neutral-900 px-4 py-2 text-sm text-neutral-200 shadow-lg",
+        "flex items-center gap-2 rounded-lg border border-red-500/50 bg-red-900 p-2",
         inline ? "relative w-full" : "absolute top-4 right-4 z-50 max-w-xl",
       )}
     >
-      <WarningCircleIcon
-        className="mt-0.5 shrink-0 text-red-500"
-        size={16}
-        weight="fill"
-        aria-hidden
-      />
-      <span>{message}</span>
+      <div className="p-2 rounded-lg bg-red-500/50">
+        <WarningCircleIcon
+          className="shrink-0 text-white"
+          size={24}
+          weight="fill"
+          aria-hidden
+        />
+      </div>
+      <span className="text-sm text-white">{message}</span>
     </div>
   );
 }

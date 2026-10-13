@@ -1,18 +1,22 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
+import { Loader2, Menu } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ChatPanel } from "@/components/chat/ChatPanel";
 import { ErrorBanner } from "@/components/ErrorBanner";
+import { GuestSessionBanner } from "@/components/GuestSessionBanner";
 import { SessionSidebar } from "@/components/session/SessionSidebar";
+import { useAuth } from "@/hooks/useAuth";
 import { useChat } from "@/hooks/useChat";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useRateLimit } from "@/hooks/useRateLimit";
 import { useSessions } from "@/hooks/useSessions";
 import { getApiErrorMessage } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 export function HomePage() {
+  const { user, loading: authLoading } = useAuth();
   const {
     sessions,
     activeSessionId,
@@ -20,13 +24,24 @@ export function HomePage() {
     loading,
     loadSession,
     createSession,
+    deleteSession,
+    renameSession,
     ensureActiveSession,
+    resetAfterSignOut,
+    reloadAfterSignIn,
   } = useSessions();
 
   const { sending, streamingContent, displayMessages, sendMessage, sendAssessmentRequest } =
     useChat(sessionDetail, loadSession);
 
-  const { uploading, uploadDocument, deleteDocument } = useDocuments(
+  const {
+    uploading,
+    allDocuments,
+    loadingAll,
+    uploadDocument,
+    loadAllDocuments,
+    deleteDocument,
+  } = useDocuments(
     sessionDetail,
     loadSession,
   );
@@ -37,13 +52,14 @@ export function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const bootstrappedRef = useRef(false);
+  const prevUserRef = useRef<typeof user | undefined>(undefined);
 
   const messagesLimited = isLimited("messages");
   const uploadsLimited = isLimited("uploads");
   const sessionsLimited = isLimited("sessions");
+  const currentSessionEmpty = (sessionDetail?.messages.length ?? 0) === 0;
   const messageLimitMessage = getMessage("messages");
   const uploadLimitMessage = getMessage("uploads");
-  const sessionLimitMessage = getMessage("sessions");
 
   useEffect(() => {
     if (bootstrappedRef.current) return;
@@ -63,20 +79,72 @@ export function HomePage() {
     })();
   }, [ensureActiveSession, handleError]);
 
+  useEffect(() => {
+    if (authLoading) return;
+
+    const previousUser = prevUserRef.current;
+    prevUserRef.current = user;
+
+    if (previousUser === undefined) return;
+
+    const signedOut = previousUser !== null && user === null;
+    const signedIn = previousUser === null && user !== null;
+
+    if (!signedOut && !signedIn) return;
+
+    void (async () => {
+      setBootstrapping(true);
+      setError(null);
+      try {
+        if (signedOut) {
+          await resetAfterSignOut();
+        } else {
+          await reloadAfterSignIn();
+        }
+      } catch (err) {
+        const limitMessage = handleError(err, "sessions");
+        setError(
+          limitMessage ?? getApiErrorMessage(err, "Falha ao carregar sessões"),
+        );
+      } finally {
+        setBootstrapping(false);
+      }
+    })();
+  }, [
+    authLoading,
+    handleError,
+    reloadAfterSignIn,
+    resetAfterSignOut,
+    user,
+  ]);
+
   const handleSend = useCallback(
-    async (content: string) => {
+    async (content: string, files: File[] = []) => {
       if (isLimited("messages")) return;
       setError(null);
       try {
-        await sendMessage(content);
+        for (const file of files) {
+          if (isLimited("uploads")) return;
+          await uploadDocument(file);
+        }
+        if (files.length > 0) {
+          void loadAllDocuments();
+        }
+        await sendMessage(content, files.map((file) => file.name));
       } catch (err) {
-        const limitMessage = handleError(err, "messages");
+        const limitMessage = handleError(err, files.length > 0 ? "uploads" : "messages");
         setError(
-          limitMessage ?? getApiErrorMessage(err, "Falha ao enviar mensagem"),
+          limitMessage ??
+            getApiErrorMessage(
+              err,
+              files.length > 0
+                ? "Falha ao enviar documento"
+                : "Falha ao enviar mensagem",
+            ),
         );
       }
     },
-    [handleError, isLimited, sendMessage],
+    [handleError, isLimited, loadAllDocuments, sendMessage, uploadDocument],
   );
 
   const handleAssess = useCallback(async () => {
@@ -92,8 +160,27 @@ export function HomePage() {
     }
   }, [handleError, isLimited, sendAssessmentRequest]);
 
+  const handleDeleteDocument = useCallback(
+    async (docId: string, sessionId: string) => {
+      setError(null);
+      try {
+        await deleteDocument(docId, sessionId);
+      } catch (err) {
+        setError(getApiErrorMessage(err, "Falha ao excluir arquivo"));
+      }
+    },
+    [deleteDocument],
+  );
+
+  const handleLoadDocuments = useCallback(() => {
+    void loadAllDocuments().catch((err) => {
+      setError(getApiErrorMessage(err, "Falha ao carregar arquivos"));
+    });
+  }, [loadAllDocuments]);
+
   const handleCreateSession = useCallback(async () => {
     if (isLimited("sessions")) return;
+    if (currentSessionEmpty) return;
     setError(null);
     try {
       await createSession();
@@ -103,23 +190,32 @@ export function HomePage() {
         limitMessage ?? getApiErrorMessage(err, "Falha ao criar sessão"),
       );
     }
-  }, [createSession, handleError, isLimited]);
+  }, [createSession, currentSessionEmpty, handleError, isLimited]);
 
-  const handleUpload = useCallback(
-    async (file: File) => {
-      if (isLimited("uploads")) return;
+  const handleDeleteSession = useCallback(
+    async (sessionId: string) => {
       setError(null);
       try {
-        await uploadDocument(file);
+        await deleteSession(sessionId);
+        void loadAllDocuments();
       } catch (err) {
-        const limitMessage = handleError(err, "uploads");
-        setError(
-          limitMessage ??
-            getApiErrorMessage(err, "Falha ao enviar documento"),
-        );
+        setError(getApiErrorMessage(err, "Falha ao excluir sessão"));
       }
     },
-    [handleError, isLimited, uploadDocument],
+    [deleteSession, loadAllDocuments],
+  );
+
+  const handleRenameSession = useCallback(
+    async (sessionId: string, title: string) => {
+      setError(null);
+      try {
+        await renameSession(sessionId, title);
+      } catch (err) {
+        setError(getApiErrorMessage(err, "Falha ao renomear sessão"));
+        throw err;
+      }
+    },
+    [renameSession],
   );
 
   if (bootstrapping || loading) {
@@ -132,7 +228,16 @@ export function HomePage() {
 
   return (
     <div className="flex h-screen flex-col">
-      <div className="flex min-h-0 flex-1">
+      <div className="relative flex min-h-0 flex-1">
+        {sidebarOpen && (
+          <button
+            type="button"
+            className="fixed inset-0 z-40 bg-black/50 md:hidden"
+            aria-label="Fechar menu"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
         <SessionSidebar
           sessions={sessions}
           activeSessionId={activeSessionId}
@@ -141,25 +246,45 @@ export function HomePage() {
             setSidebarOpen(false);
           }}
           onCreate={() => void handleCreateSession()}
-          createDisabled={sessionsLimited}
-          createDisabledMessage={sessionLimitMessage}
-          className={sidebarOpen ? "flex" : "hidden md:flex"}
+          onDelete={(id) => void handleDeleteSession(id)}
+          onRename={(id, title) => handleRenameSession(id, title)}
+          createDisabled={sessionsLimited || currentSessionEmpty || currentSessionEmpty }
+          documents={allDocuments}
+          documentsLoading={loadingAll}
+          onLoadDocuments={handleLoadDocuments}
+          onDeleteDocument={(docId, sessionId) => void handleDeleteDocument(docId, sessionId)}
+          onCloseMobile={() => setSidebarOpen(false)}
+          className={cn(
+            "fixed inset-y-0 left-0 z-50 md:relative md:z-auto",
+            sidebarOpen ? "flex" : "hidden md:flex",
+          )}
         />
 
         <main className="relative flex min-h-0 flex-1 flex-col">
+          <div className="flex items-center border-b border-[var(--border)] px-3 py-2 md:hidden">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              className="rounded-lg p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              aria-label="Abrir menu"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            <span className="ml-2 text-sm font-medium">LGPD<span className="text-primary">ei</span></span>
+          </div>
+
           {error && <ErrorBanner message={error} />}
+
+          {!user && sessionDetail && <GuestSessionBanner />}
 
           {sessionDetail ? (
             <ChatPanel
+              sessionId={sessionDetail.session.id}
               messages={displayMessages}
-              documents={sessionDetail.documents}
               streamingContent={streamingContent}
-              sending={sending}
-              uploading={uploading}
+              sending={sending || uploading}
               onSend={handleSend}
               onAssess={handleAssess}
-              onUpload={handleUpload}
-              onRemoveDocument={deleteDocument}
               messagesLimited={messagesLimited}
               uploadsLimited={uploadsLimited}
               messageLimitMessage={messageLimitMessage}

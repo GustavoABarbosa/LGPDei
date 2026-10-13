@@ -27,6 +27,7 @@ async def get_session_detail(session: AssessmentSession) -> dict:
                 "content": m.content,
                 "messageType": m.message_type,
                 "assessmentSnapshot": m.assessment_snapshot.model_dump() if m.assessment_snapshot else None,
+                "attachments": m.attachments,
                 "createdAt": m.created_at.isoformat(),
             }
             for m in messages
@@ -57,6 +58,21 @@ async def list_sessions_for_user(user: PublicUser) -> list[AssessmentSession]:
     return await AssessmentSession.find(
         AssessmentSession.user_id == PydanticObjectId(user.id)
     ).sort("-updated_at").to_list()
+
+
+async def link_sessions_for_token(session_token: str, user_id: str) -> None:
+    from app.utils.session_token import hash_session_token
+
+    token_hash = hash_session_token(session_token)
+    sessions = await AssessmentSession.find(
+        AssessmentSession.session_token_hash == token_hash,
+        AssessmentSession.user_id == None,
+    ).to_list()
+
+    user_oid = PydanticObjectId(user_id)
+    for session in sessions:
+        session.user_id = user_oid
+        await session.save()
 
 
 async def update_session_title_from_message(session: AssessmentSession, content: str) -> None:

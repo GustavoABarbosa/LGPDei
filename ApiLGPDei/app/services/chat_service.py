@@ -46,6 +46,7 @@ async def stream_chat_response(
     session: AssessmentSession,
     user_content: str,
     locale: str,
+    attachments: list[str] | None = None,
 ) -> AsyncGenerator[str, None]:
     lc_messages, doc_context, last_assessment = await load_session_context(session)
 
@@ -53,6 +54,7 @@ async def stream_chat_response(
         session_id=session.id,
         role="user",
         content=user_content,
+        attachments=attachments or [],
     ).insert()
 
     lc_messages.append(HumanMessage(content=user_content))

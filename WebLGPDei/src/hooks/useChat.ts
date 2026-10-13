@@ -36,7 +36,7 @@ export function useChat(
   );
 
   const sendMessage = useCallback(
-    async (content: string) => {
+    async (content: string, attachments: string[] = []) => {
       if (!sessionDetail) return;
 
       const tempUserMessage: ChatMessage = {
@@ -45,6 +45,7 @@ export function useChat(
         content,
         messageType: "chat",
         assessmentSnapshot: null,
+        attachments,
         createdAt: new Date().toISOString(),
       };
 
@@ -62,7 +63,7 @@ export function useChat(
               "Content-Type": "application/json",
               "x-locale": "pt",
             },
-            body: JSON.stringify({ content }),
+            body: JSON.stringify({ content, attachments }),
           },
         );
 

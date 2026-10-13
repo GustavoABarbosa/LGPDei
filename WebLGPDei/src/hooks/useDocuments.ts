@@ -3,13 +3,26 @@
 import { useCallback, useState } from "react";
 
 import { apiFetch } from "@/lib/api";
-import type { SessionDetail, SessionDocumentMeta } from "@/types";
+import type { SessionDetail, SessionDocumentMeta, UserDocument } from "@/types";
 
 export function useDocuments(
   sessionDetail: SessionDetail | null,
   loadSession: (id: string, options?: { silent?: boolean }) => Promise<SessionDetail>,
 ) {
   const [uploading, setUploading] = useState(false);
+  const [allDocuments, setAllDocuments] = useState<UserDocument[]>([]);
+  const [loadingAll, setLoadingAll] = useState(false);
+
+  const loadAllDocuments = useCallback(async () => {
+    setLoadingAll(true);
+    try {
+      const data = await apiFetch<{ documents: UserDocument[] }>("/documents");
+      setAllDocuments(data.documents);
+      return data.documents;
+    } finally {
+      setLoadingAll(false);
+    }
+  }, []);
 
   const uploadDocument = useCallback(
     async (file: File): Promise<SessionDocumentMeta> => {
@@ -38,16 +51,29 @@ export function useDocuments(
   );
 
   const deleteDocument = useCallback(
-    async (docId: string) => {
-      if (!sessionDetail) return;
+    async (docId: string, sessionId?: string) => {
+      const targetSessionId = sessionId ?? sessionDetail?.session.id;
+      if (!targetSessionId) return;
 
-      await apiFetch(`/sessions/${sessionDetail.session.id}/documents/${docId}`, {
+      await apiFetch(`/sessions/${targetSessionId}/documents/${docId}`, {
         method: "DELETE",
       });
-      await loadSession(sessionDetail.session.id, { silent: true });
+
+      setAllDocuments((documents) => documents.filter((document) => document.id !== docId));
+
+      if (sessionDetail?.session.id === targetSessionId) {
+        await loadSession(targetSessionId, { silent: true });
+      }
     },
     [loadSession, sessionDetail],
   );
 
-  return { uploading, uploadDocument, deleteDocument };
+  return {
+    uploading,
+    allDocuments,
+    loadingAll,
+    uploadDocument,
+    loadAllDocuments,
+    deleteDocument,
+  };
 }

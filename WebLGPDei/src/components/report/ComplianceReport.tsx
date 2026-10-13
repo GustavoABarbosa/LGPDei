@@ -12,7 +12,7 @@ const riskStyles: Record<AssessmentSnapshot["overall_risk"], string> = {
   critical: "bg-red-600 text-white",
   high: "bg-orange-500 text-white",
   medium: "bg-yellow-500 text-black",
-  low: "bg-emerald-600 text-white",
+  low: "bg-primary-600 text-white",
 };
 
 type Props = {
@@ -24,14 +24,9 @@ export function ComplianceReport({ snapshot, markdownFallback }: Props) {
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <span className="text-sm font-semibold uppercase tracking-wide text-muted">
-          Análise LGPD
-        </span>
+        <span className="text-sm font-semibold uppercase tracking-wide text-muted">Análise LGPD</span>
         <span
-          className={cn(
-            "rounded-full px-3 py-1 text-xs font-semibold uppercase",
-            riskStyles[snapshot.overall_risk],
-          )}
+          className={cn("rounded-full px-3 py-1 text-xs font-semibold uppercase", riskStyles[snapshot.overall_risk])}
         >
           Risco: {snapshot.overall_risk}
         </span>
@@ -44,7 +39,7 @@ export function ComplianceReport({ snapshot, markdownFallback }: Props) {
 
       {snapshot.strengths.length > 0 && (
         <div className="mb-4">
-          <h4 className="mb-2 text-sm font-semibold text-emerald-700">Pontos positivos</h4>
+          <h4 className="mb-2 text-sm font-semibold text-primary-700">Pontos positivos</h4>
           <ul className="list-inside list-disc space-y-1 text-sm">
             {snapshot.strengths.map((s) => (
               <li key={s}>{s}</li>
@@ -89,16 +84,12 @@ export function ComplianceReport({ snapshot, markdownFallback }: Props) {
 
       {markdownFallback && (
         <details className="mt-4">
-          <summary className="cursor-pointer text-sm text-muted">
-            Ver resposta completa
-          </summary>
+          <summary className="cursor-pointer text-sm text-muted">Ver resposta completa</summary>
           <pre className="mt-2 whitespace-pre-wrap text-xs">{markdownFallback}</pre>
         </details>
       )}
 
-      <p className="mt-4 border-t border-[var(--border)] pt-3 text-xs italic text-muted">
-        {snapshot.disclaimer}
-      </p>
+      <p className="mt-4 border-t border-[var(--border)] pt-3 text-xs italic text-muted">{snapshot.disclaimer}</p>
     </div>
   );
 }

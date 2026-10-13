@@ -22,6 +22,7 @@ export type ChatMessage = {
   content: string;
   messageType: "chat" | "assessment";
   assessmentSnapshot: AssessmentSnapshot | null;
+  attachments: string[];
   createdAt: string;
 };
 
@@ -31,6 +32,11 @@ export type SessionDocumentMeta = {
   mimeType: string;
   order: number;
   uploadedAt: string;
+};
+
+export type UserDocument = SessionDocumentMeta & {
+  sessionId: string;
+  sessionTitle: string;
 };
 
 export type ChatSession = {

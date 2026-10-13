@@ -15,6 +15,7 @@ messages_router = APIRouter(prefix="/sessions/{session_id}/messages", tags=["mes
 
 class StreamMessageBody(BaseModel):
     content: str = Field(min_length=1, max_length=8000)
+    attachments: list[str] = Field(default_factory=list, max_length=10)
 
 
 @messages_router.post("/stream")
@@ -32,7 +33,12 @@ async def stream_message(
 
     async def event_generator():
         try:
-            async for chunk in stream_chat_response(session, body.content, locale):
+            async for chunk in stream_chat_response(
+                session,
+                body.content,
+                locale,
+                body.attachments,
+            ):
                 yield f"data: {json.dumps({'content': chunk})}\n\n"
             yield "data: [DONE]\n\n"
         except Exception as exc:

@@ -41,6 +41,7 @@ class Message(Document):
     content: str
     message_type: str = "chat"
     assessment_snapshot: AssessmentOutput | None = None
+    attachments: list[str] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     class Settings:

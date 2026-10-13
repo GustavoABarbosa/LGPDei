@@ -32,6 +32,8 @@ cp .env.example .env
 
 # Windows (se `pip` não for reconhecido, use py):
 py -3.12 -m pip install -e ".[dev]"
+# ou
+py -3.12 -m app
 
 # Linux/macOS:
 python3 -m pip install -e ".[dev]"

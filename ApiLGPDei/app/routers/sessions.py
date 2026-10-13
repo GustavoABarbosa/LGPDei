@@ -14,6 +14,7 @@ from app.services.session_service import (
     list_sessions_for_token,
     list_sessions_for_user,
 )
+from app.utils.http_error import HttpError
 from app.utils.session_token import generate_session_token, hash_session_token, session_expires_at
 
 sessions_router = APIRouter(prefix="/sessions", tags=["sessions"])
@@ -21,6 +22,10 @@ sessions_router = APIRouter(prefix="/sessions", tags=["sessions"])
 
 class CreateSessionBody(BaseModel):
     locale: str = "pt"
+
+
+class UpdateSessionBody(BaseModel):
+    title: str
 
 
 def locale_from_header(accept_language: str | None, override: str | None = None) -> str:
@@ -92,6 +97,21 @@ async def list_sessions(
 
 @sessions_router.get("/{session_id}")
 async def get_session(session: AssessmentSession = Depends(get_owned_session)):
+    return await get_session_detail(session)
+
+
+@sessions_router.patch("/{session_id}")
+async def update_session(
+    body: UpdateSessionBody,
+    session: AssessmentSession = Depends(get_owned_session),
+):
+    title = body.title.strip()[:48]
+    if not title:
+        raise HttpError(400, "Título inválido")
+
+    session.title = title
+    session.updated_at = datetime.utcnow()
+    await session.save()
     return await get_session_detail(session)
 
 

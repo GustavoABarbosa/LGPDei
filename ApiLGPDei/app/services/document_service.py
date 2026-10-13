@@ -1,17 +1,19 @@
 from datetime import datetime
 
+from beanie.operators import In
 from fastapi import UploadFile
 
 from app.config import settings
-from app.models import AssessmentSession, Message, SessionDocument
+from app.models import AssessmentSession, SessionDocument
+from app.models.user import PublicUser
 from app.services.document_parser import extract_document_text, is_supported_file
+from app.services.session_service import list_sessions_for_token, list_sessions_for_user
 from app.utils.http_error import HttpError
 
 
 async def upload_session_document(
     session: AssessmentSession,
     file: UploadFile,
-    locale: str,
 ) -> dict:
     existing_count = await SessionDocument.find(
         SessionDocument.session_id == session.id
@@ -46,19 +48,6 @@ async def upload_session_document(
     )
     await doc.insert()
 
-    user_count = await Message.find(
-        Message.session_id == session.id,
-        Message.role == "user",
-    ).count()
-
-    if user_count == 0:
-        label = "Recebi seu documento" if locale == "pt" else "I received your document"
-        await Message(
-            session_id=session.id,
-            role="assistant",
-            content=f"{label} (**{file.filename}**). Vou considerar essas informações na nossa conversa.",
-        ).insert()
-
     session.updated_at = datetime.utcnow()
     await session.save()
 
@@ -69,6 +58,41 @@ async def upload_session_document(
         "order": doc.order,
         "uploadedAt": doc.uploaded_at.isoformat(),
     }
+
+
+async def list_accessible_documents(
+    *,
+    user: PublicUser | None,
+    session_token: str | None,
+) -> list[dict]:
+    if user:
+        sessions = await list_sessions_for_user(user)
+    elif session_token:
+        sessions = await list_sessions_for_token(session_token)
+    else:
+        return []
+
+    if not sessions:
+        return []
+
+    session_map = {session.id: session for session in sessions}
+    session_ids = list(session_map.keys())
+    documents = await SessionDocument.find(
+        In(SessionDocument.session_id, session_ids)
+    ).sort("-uploaded_at").to_list()
+
+    return [
+        {
+            "id": str(document.id),
+            "fileName": document.file_name,
+            "mimeType": document.mime_type,
+            "order": document.order,
+            "uploadedAt": document.uploaded_at.isoformat(),
+            "sessionId": str(document.session_id),
+            "sessionTitle": session_map[document.session_id].title,
+        }
+        for document in documents
+    ]
 
 
 async def delete_session_document(session: AssessmentSession, doc_id: str) -> None:

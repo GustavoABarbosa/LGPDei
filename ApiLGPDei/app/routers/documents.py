@@ -1,17 +1,26 @@
-from fastapi import APIRouter, Depends, File, Header, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Request, UploadFile
 
-from app.dependencies import get_owned_session
+from app.dependencies import get_optional_session_token, get_optional_user, get_owned_session
 from app.middleware.rate_limit import limiter
 from app.models import AssessmentSession
-from app.services.document_service import delete_session_document, upload_session_document
+from app.models.user import PublicUser
+from app.services.document_service import (
+    delete_session_document,
+    list_accessible_documents,
+    upload_session_document,
+)
 
+all_documents_router = APIRouter(prefix="/documents", tags=["documents"])
 documents_router = APIRouter(prefix="/sessions/{session_id}/documents", tags=["documents"])
 
 
-def locale_from_header(accept_language: str | None) -> str:
-    if accept_language and accept_language.lower().startswith("en"):
-        return "en"
-    return "pt"
+@all_documents_router.get("")
+async def list_documents(
+    session_token: str | None = Depends(get_optional_session_token),
+    user: PublicUser | None = Depends(get_optional_user),
+):
+    documents = await list_accessible_documents(user=user, session_token=session_token)
+    return {"documents": documents}
 
 
 @documents_router.post("")
@@ -21,10 +30,8 @@ async def upload_document(
     session_id: str,
     file: UploadFile = File(...),
     session: AssessmentSession = Depends(get_owned_session),
-    accept_language: str | None = Header(default=None),
 ):
-    locale = locale_from_header(accept_language)
-    doc = await upload_session_document(session, file, locale)
+    doc = await upload_session_document(session, file)
     return {"document": doc}
 
 

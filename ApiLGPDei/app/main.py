@@ -10,7 +10,7 @@ from app.config import settings
 from app.database import init_db
 from app.middleware.rate_limit import limiter
 from app.routers.auth import auth_router
-from app.routers.documents import documents_router
+from app.routers.documents import all_documents_router, documents_router
 from app.routers.messages import messages_router
 from app.routers.sessions import sessions_router
 from app.utils.http_error import HttpError
@@ -61,5 +61,6 @@ async def health():
 
 app.include_router(auth_router, prefix="/api")
 app.include_router(sessions_router, prefix="/api")
+app.include_router(all_documents_router, prefix="/api")
 app.include_router(documents_router, prefix="/api")
 app.include_router(messages_router, prefix="/api")

@@ -1,15 +1,31 @@
+import re
+
 import bcrypt
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.models.user import PublicUser, User
 from app.utils.http_error import HttpError
 from app.utils.jwt import create_access_token
+
+PASSWORD_PATTERN = re.compile(
+    r"^(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,128}$"
+)
 
 
 class RegisterBody(BaseModel):
     name: str = Field(min_length=2, max_length=80)
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("password")
+    @classmethod
+    def password_strength(cls, value: str) -> str:
+        if not PASSWORD_PATTERN.fullmatch(value):
+            raise ValueError(
+                "A senha deve ter pelo menos 8 caracteres, "
+                "com letra maiúscula, minúscula e símbolo"
+            )
+        return value
 
 
 class LoginBody(BaseModel):
