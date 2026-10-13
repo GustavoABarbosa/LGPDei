@@ -16,6 +16,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { useAuth } from "@/hooks/useAuth";
+import { useIsClient } from "@/hooks/useIsClient";
 import { cn } from "@/lib/utils";
 import type { SessionListItem, UserDocument } from "@/types";
 
@@ -72,15 +73,11 @@ export function SessionSidebar({
   const [renamingSessionId, setRenamingSessionId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [renaming, setRenaming] = useState(false);
-  const [portalReady, setPortalReady] = useState(false);
+  const portalReady = useIsClient();
   const userMenuRef = useRef<HTMLDivElement>(null);
   const sessionMenuRef = useRef<HTMLDivElement>(null);
   const sessionMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    setPortalReady(true);
-  }, []);
 
   useEffect(() => {
     if (!userMenuOpen) return;
@@ -314,25 +311,11 @@ export function SessionSidebar({
           </div>
 
           <div className="custom-scrollbar flex-1 space-y-1 overflow-y-auto p-2">
-            {Array.from({ length: 12 }, (_, index) => {
-              const base = sessions[index % Math.max(sessions.length, 1)];
-              const session: SessionListItem = base
-                ? {
-                    ...base,
-                    id: `${base.id}__overflow-${index}`,
-                    title: `${base.title} (${index + 1})`,
-                  }
-                : {
-                    id: `overflow-placeholder-${index}`,
-                    title: `Sessão de teste ${index + 1}`,
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                  };
-              const realId = base?.id ?? session.id;
-              const isActive = activeSessionId === realId;
-              const isDeleting = deletingSessionId === realId;
+            {sessions.map((session) => {
+              const isActive = activeSessionId === session.id;
+              const isDeleting = deletingSessionId === session.id;
               const isMenuOpen = menuSessionId === session.id;
-              const isRenaming = renamingSessionId === realId;
+              const isRenaming = renamingSessionId === session.id;
 
               return (
                 <div
@@ -372,7 +355,7 @@ export function SessionSidebar({
                   ) : (
                     <button
                       type="button"
-                      onClick={() => base && onSelect(realId)}
+                      onClick={() => onSelect(session.id)}
                       className="min-w-0 flex-1 px-3 py-2 text-left text-sm"
                     >
                       <p className="truncate font-medium">{session.title}</p>
@@ -393,7 +376,7 @@ export function SessionSidebar({
                       onClick={(event) =>
                         toggleSessionMenu(session.id, event.currentTarget)
                       }
-                      disabled={isDeleting || isRenaming || !base}
+                      disabled={isDeleting || isRenaming}
                       className={cn(
                         "rounded-md p-1 disabled:opacity-50",
                         isActive
@@ -413,7 +396,6 @@ export function SessionSidebar({
 
                     {portalReady &&
                       isMenuOpen &&
-                      base &&
                       menuPosition &&
                       createPortal(
                         <div
@@ -431,7 +413,7 @@ export function SessionSidebar({
                           <button
                             type="button"
                             role="menuitem"
-                            onClick={() => startRename(base)}
+                            onClick={() => startRename(session)}
                             className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-foreground hover:bg-neutral-100 dark:hover:bg-neutral-800"
                           >
                             <Pencil className="size-3.5" />
@@ -440,7 +422,7 @@ export function SessionSidebar({
                           <button
                             type="button"
                             role="menuitem"
-                            onClick={() => void handleDeleteSession(realId)}
+                            onClick={() => void handleDeleteSession(session.id)}
                             className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-danger hover:bg-neutral-100 dark:hover:bg-neutral-800"
                           >
                             <Trash2 className="size-3.5" />

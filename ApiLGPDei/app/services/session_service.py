@@ -1,9 +1,8 @@
-from datetime import datetime
-
 from beanie import PydanticObjectId
 
 from app.models import AssessmentSession, Message, SessionDocument
 from app.models.user import PublicUser
+from app.utils.time import utcnow
 
 
 async def get_session_detail(session: AssessmentSession) -> dict:
@@ -81,5 +80,5 @@ async def update_session_title_from_message(session: AssessmentSession, content:
     title = content.strip()[:48]
     if title:
         session.title = title
-        session.updated_at = datetime.utcnow()
+        session.updated_at = utcnow()
         await session.save()

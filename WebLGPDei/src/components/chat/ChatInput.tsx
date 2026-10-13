@@ -15,7 +15,6 @@ type PendingFile = {
 };
 
 type Props = {
-  sessionId: string;
   onSend: (content: string, files: File[]) => Promise<void>;
   onAssess: () => Promise<void>;
   sending: boolean;
@@ -26,7 +25,6 @@ type Props = {
 };
 
 export function ChatInput({
-  sessionId,
   onSend,
   sending,
   disabled,
@@ -39,12 +37,6 @@ export function ChatInput({
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    setContent("");
-    setIsMultiline(false);
-    setPendingFiles([]);
-  }, [sessionId]);
 
   const adjustTextarea = useCallback(() => {
     const textarea = textareaRef.current;

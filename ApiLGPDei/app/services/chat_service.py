@@ -1,12 +1,11 @@
 from collections.abc import AsyncGenerator
-from datetime import datetime
 
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage
 
-from app.agents.nodes import agent_graph, create_chat_model
-from app.agents.prompts import build_chat_system_prompt, classify_intent
+from app.agents.nodes import agent_graph
 from app.agents.state import GraphState
 from app.models import AssessmentSession, Message, SessionDocument
+from app.utils.time import utcnow
 
 
 async def load_session_context(session: AssessmentSession) -> tuple[list, list[dict], dict | None]:
@@ -48,62 +47,48 @@ async def stream_chat_response(
     locale: str,
     attachments: list[str] | None = None,
 ) -> AsyncGenerator[str, None]:
+    """Runs the agent graph, streaming chat tokens as they arrive and the assessment report once it is complete."""
     lc_messages, doc_context, last_assessment = await load_session_context(session)
 
     await Message(
         session_id=session.id,
+        expires_at=session.expires_at,
         role="user",
         content=user_content,
         attachments=attachments or [],
     ).insert()
 
     lc_messages.append(HumanMessage(content=user_content))
+    state: GraphState = {
+        "session_id": str(session.id),
+        "locale": locale,  # type: ignore[typeddict-item]
+        "messages": lc_messages,
+        "documents": doc_context,  # type: ignore[typeddict-item]
+        "last_assessment": last_assessment,
+        "user_content": user_content,
+    }
 
-    intent = classify_intent(user_content)
+    content = ""
+    assessment = None
+    async for mode, payload in agent_graph.astream(state, stream_mode=["messages", "updates"]):
+        if mode == "messages":
+            chunk, metadata = payload
+            if metadata.get("langgraph_node") == "chat" and isinstance(chunk, AIMessageChunk) and chunk.text:
+                content += chunk.text
+                yield chunk.text
+        elif "assess" in payload:
+            content = payload["assess"]["response_content"]
+            assessment = payload["assess"]["assessment_output"]
+            yield content
 
-    if intent == "assess":
-        state: GraphState = {
-            "session_id": str(session.id),
-            "locale": locale,  # type: ignore[typeddict-item]
-            "messages": lc_messages,
-            "documents": doc_context,
-            "last_assessment": last_assessment,
-            "user_content": user_content,
-        }
-        result = await agent_graph.ainvoke(state)
-        content = result.get("response_content", "")
-        assessment = result.get("assessment_output")
+    await Message(
+        session_id=session.id,
+        expires_at=session.expires_at,
+        role="assistant",
+        content=content,
+        message_type="assessment" if assessment else "chat",
+        assessment_snapshot=assessment,
+    ).insert()
 
-        chunk_size = 40
-        for i in range(0, len(content), chunk_size):
-            yield content[i : i + chunk_size]
-
-        msg = Message(
-            session_id=session.id,
-            role="assistant",
-            content=content,
-            message_type="assessment" if assessment else "chat",
-            assessment_snapshot=assessment,
-        )
-        await msg.insert()
-    else:
-        system = build_chat_system_prompt(locale, doc_context, last_assessment)  # type: ignore[arg-type]
-        model = create_chat_model()
-        full_messages = [SystemMessage(content=system), *lc_messages]
-
-        assistant_content = ""
-        async for chunk in model.astream(full_messages):
-            text = chunk.content if isinstance(chunk.content, str) else str(chunk.content)
-            if text:
-                assistant_content += text
-                yield text
-
-        await Message(
-            session_id=session.id,
-            role="assistant",
-            content=assistant_content,
-            message_type="chat",
-        ).insert()
-
-    session.updated_at = datetime.utcnow()
+    session.updated_at = utcnow()
     await session.save()

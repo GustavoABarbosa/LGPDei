@@ -39,8 +39,7 @@ async def chat_node(state: GraphState) -> dict:
     )
     lc_messages = [SystemMessage(content=system), *state.get("messages", [])]
     response = await model.ainvoke(lc_messages)
-    content = response.content if isinstance(response.content, str) else str(response.content)
-    return {"response_content": content}
+    return {"response_content": response.text}
 
 
 async def assess_node(state: GraphState) -> dict:

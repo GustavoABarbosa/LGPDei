@@ -4,6 +4,7 @@ import secrets
 from datetime import datetime, timedelta
 
 from app.config import settings
+from app.utils.time import utcnow
 
 
 def hash_session_token(token: str) -> str:
@@ -19,4 +20,4 @@ def generate_session_token() -> str:
 
 
 def session_expires_at() -> datetime:
-    return datetime.utcnow() + timedelta(hours=settings.session_ttl_hours)
+    return utcnow() + timedelta(hours=settings.session_ttl_hours)

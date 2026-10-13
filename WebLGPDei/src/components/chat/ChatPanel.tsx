@@ -44,7 +44,7 @@ export function ChatPanel({
 
   const chatInput = (
     <ChatInput
-      sessionId={sessionId}
+      key={sessionId}
       onSend={onSend}
       onAssess={onAssess}
       sending={sending}

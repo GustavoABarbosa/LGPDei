@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, File, Request, UploadFile
 
+from app.config import settings
 from app.dependencies import get_optional_session_token, get_optional_user, get_owned_session
 from app.middleware.rate_limit import limiter
 from app.models import AssessmentSession
@@ -24,7 +25,7 @@ async def list_documents(
 
 
 @documents_router.post("")
-@limiter.limit("10/hour")
+@limiter.limit(lambda: f"{settings.rate_limit_uploads_per_hour}/hour")
 async def upload_document(
     request: Request,
     session_id: str,

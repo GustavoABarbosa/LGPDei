@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from beanie.operators import In
 from fastapi import UploadFile
 
@@ -9,6 +7,7 @@ from app.models.user import PublicUser
 from app.services.document_parser import extract_document_text, is_supported_file
 from app.services.session_service import list_sessions_for_token, list_sessions_for_user
 from app.utils.http_error import HttpError
+from app.utils.time import utcnow
 
 
 async def upload_session_document(
@@ -41,6 +40,7 @@ async def upload_session_document(
 
     doc = SessionDocument(
         session_id=session.id,
+        expires_at=session.expires_at,
         file_name=file.filename,
         mime_type=file.content_type or "application/octet-stream",
         extracted_text=extracted,
@@ -48,7 +48,7 @@ async def upload_session_document(
     )
     await doc.insert()
 
-    session.updated_at = datetime.utcnow()
+    session.updated_at = utcnow()
     await session.save()
 
     return {
@@ -108,5 +108,5 @@ async def delete_session_document(session: AssessmentSession, doc_id: str) -> No
         raise HttpError(404, "Documento não encontrado")
 
     await doc.delete()
-    session.updated_at = datetime.utcnow()
+    session.updated_at = utcnow()
     await session.save()

@@ -8,5 +8,28 @@ services:
     volumes:
       - lgpdei_mongo_data:/data/db
 
+  # Full stack in containers: docker compose --profile app up --build
+  api:
+    profiles: ["app"]
+    build: ./ApiLGPDei
+    env_file: ./ApiLGPDei/.env
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/lgpdei
+    ports:
+      - "3334:3334"
+    depends_on:
+      - mongo
+
+  web:
+    profiles: ["app"]
+    build:
+      context: ./WebLGPDei
+      args:
+        NEXT_PUBLIC_API_BASE: http://localhost:3334/api
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
 volumes:
   lgpdei_mongo_data:

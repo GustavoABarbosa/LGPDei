@@ -1,15 +1,16 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import jwt
 
 from app.config import settings
 from app.utils.http_error import HttpError
+from app.utils.time import utcnow
 
 
 def create_access_token(user_id: str) -> str:
     payload = {
         "sub": user_id,
-        "exp": datetime.utcnow() + timedelta(days=settings.jwt_expires_days),
+        "exp": utcnow() + timedelta(days=settings.jwt_expires_days),
     }
     return jwt.encode(payload, settings.jwt_secret, algorithm="HS256")
 

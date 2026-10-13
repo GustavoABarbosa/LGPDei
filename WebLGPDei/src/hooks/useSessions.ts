@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { apiFetch } from "@/lib/api";
 import type { SessionDetail, SessionListItem } from "@/types";
@@ -23,8 +23,10 @@ export function useSessions() {
 
   const sessionDetailRef = useRef(sessionDetail);
   const activeSessionIdRef = useRef(activeSessionId);
-  sessionDetailRef.current = sessionDetail;
-  activeSessionIdRef.current = activeSessionId;
+  useEffect(() => {
+    sessionDetailRef.current = sessionDetail;
+    activeSessionIdRef.current = activeSessionId;
+  }, [sessionDetail, activeSessionId]);
 
   const loadSessions = useCallback(async () => {
     const data = await apiFetch<{ sessions: SessionListItem[] }>("/sessions");

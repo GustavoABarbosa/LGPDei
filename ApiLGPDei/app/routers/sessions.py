@@ -1,10 +1,9 @@
-from datetime import datetime
-
 from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends, Header, Request, Response
 from pydantic import BaseModel
 
 from app.agents.prompts import WELCOME_MESSAGE
+from app.config import settings
 from app.dependencies import get_owned_session, get_optional_session_token, get_optional_user
 from app.middleware.rate_limit import limiter
 from app.models import AssessmentSession, Message, SessionDocument
@@ -14,8 +13,10 @@ from app.services.session_service import (
     list_sessions_for_token,
     list_sessions_for_user,
 )
+from app.utils.cookies import SESSION_COOKIE, set_cookie
 from app.utils.http_error import HttpError
 from app.utils.session_token import generate_session_token, hash_session_token, session_expires_at
+from app.utils.time import utcnow
 
 sessions_router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -37,7 +38,7 @@ def locale_from_header(accept_language: str | None, override: str | None = None)
 
 
 @sessions_router.post("")
-@limiter.limit("5/hour")
+@limiter.limit(lambda: f"{settings.rate_limit_sessions_per_hour}/hour")
 async def create_session(
     request: Request,
     response: Response,
@@ -47,7 +48,7 @@ async def create_session(
 ):
     locale = locale_from_header(accept_language, body.locale if body else None)
     token = generate_session_token()
-    now = datetime.utcnow()
+    now = utcnow()
 
     session = AssessmentSession(
         title="Nova sessão" if locale == "pt" else "New session",
@@ -59,13 +60,7 @@ async def create_session(
     )
     await session.insert()
 
-    response.set_cookie(
-        key="session_token",
-        value=token,
-        httponly=True,
-        samesite="lax",
-        max_age=72 * 3600,
-    )
+    set_cookie(response, SESSION_COOKIE, token, settings.session_ttl_hours * 3600)
 
     return await get_session_detail(session)
 
@@ -110,7 +105,7 @@ async def update_session(
         raise HttpError(400, "Título inválido")
 
     session.title = title
-    session.updated_at = datetime.utcnow()
+    session.updated_at = utcnow()
     await session.save()
     return await get_session_detail(session)
 

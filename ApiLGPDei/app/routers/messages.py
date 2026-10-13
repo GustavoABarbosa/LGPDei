@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Header, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from app.config import settings
 from app.dependencies import get_owned_session
 from app.middleware.rate_limit import limiter
 from app.models import AssessmentSession
@@ -19,7 +20,7 @@ class StreamMessageBody(BaseModel):
 
 
 @messages_router.post("/stream")
-@limiter.limit("30/hour")
+@limiter.limit(lambda: f"{settings.rate_limit_messages_per_hour}/hour")
 async def stream_message(
     request: Request,
     session_id: str,

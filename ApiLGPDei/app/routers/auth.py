@@ -1,30 +1,22 @@
 from fastapi import APIRouter, Cookie, Depends, Response
 
+from app.config import settings
 from app.dependencies import get_current_user
 from app.models.user import PublicUser
 from app.services.auth_service import LoginBody, RegisterBody, login_user, register_user
 from app.services.session_service import link_sessions_for_token
+from app.utils.cookies import AUTH_COOKIE, SESSION_COOKIE, delete_cookie, set_cookie
 
 auth_router = APIRouter(prefix="/auth", tags=["auth"])
 
-AUTH_COOKIE = "auth_token"
-SESSION_COOKIE = "session_token"
-AUTH_MAX_AGE = 7 * 24 * 3600
-
 
 def set_auth_cookie(response: Response, token: str) -> None:
-    response.set_cookie(
-        key=AUTH_COOKIE,
-        value=token,
-        httponly=True,
-        samesite="lax",
-        max_age=AUTH_MAX_AGE,
-    )
+    set_cookie(response, AUTH_COOKIE, token, settings.jwt_expires_days * 24 * 3600)
 
 
 def clear_auth_cookies(response: Response) -> None:
-    response.delete_cookie(key=AUTH_COOKIE, path="/", samesite="lax")
-    response.delete_cookie(key=SESSION_COOKIE, path="/", samesite="lax")
+    delete_cookie(response, AUTH_COOKIE)
+    delete_cookie(response, SESSION_COOKIE)
 
 
 @auth_router.post("/register")

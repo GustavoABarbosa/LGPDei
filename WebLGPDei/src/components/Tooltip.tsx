@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
+import { useIsClient } from "@/hooks/useIsClient";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -13,14 +14,10 @@ type Props = {
 
 export function Tooltip({ content, children, className }: Props) {
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsClient();
   const [coords, setCoords] = useState({ top: 0, left: 0 });
   const triggerRef = useRef<HTMLSpanElement>(null);
   const tooltipId = useId();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   function updatePosition() {
     const rect = triggerRef.current?.getBoundingClientRect();
