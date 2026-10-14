@@ -1,5 +1,7 @@
 # LGPDei
 
+**English** | [Português (Brasil)](README.pt-BR.md)
+
 AI assistant that teaches Brazil's data protection law (**LGPD**, Lei 13.709/2018) and finds compliance gaps in any
 line of work: tech, HR, healthcare, marketing, public sector. Users describe how they handle data or upload
 documents, chat about it, and ask for a structured compliance report with a score, risk level, findings and legal
