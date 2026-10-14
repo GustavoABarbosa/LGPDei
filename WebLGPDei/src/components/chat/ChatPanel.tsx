@@ -55,7 +55,7 @@ export function ChatPanel({
         uploadDisabled={uploadsLimited}
         uploadDisabledMessage={uploadLimitMessage}
       />
-      <SensitiveDataNotice className="mt-2 px-3 text-center" />
+      <SensitiveDataNotice compactOnMobile className="mt-1.5 px-3 text-center md:mt-2" />
     </>
   );
 
@@ -83,7 +83,7 @@ export function ChatPanel({
         )}
         <div ref={bottomRef} />
       </div>
-      <div className="p-4">{chatInput}</div>
+      <div className="px-3 pb-2 pt-2 md:p-4">{chatInput}</div>
     </div>
   );
 }

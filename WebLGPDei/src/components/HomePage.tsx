@@ -322,17 +322,29 @@ export function HomePage() {
         </main>
       </div>
 
-      <footer className="border-t border-border bg-card px-4 py-2 text-center text-xs text-muted">
-        Ferramenta educativa. Não substitui assessoria jurídica. Mensagens e documentos
-        são enviados à Anthropic (EUA) para gerar as respostas. Veja a{" "}
-        <Link href="/privacidade" className="underline hover:text-foreground">
-          Política de privacidade
-        </Link>{" "}
-        e os{" "}
-        <Link href="/termos" className="underline hover:text-foreground">
-          Termos de uso
-        </Link>
-        .
+      <footer className="border-t border-border bg-card px-4 py-1.5 text-center text-xs text-muted md:py-2">
+        <span className="md:hidden">
+          Não substitui assessoria jurídica ·{" "}
+          <Link href="/privacidade" className="underline hover:text-foreground">
+            Privacidade
+          </Link>{" "}
+          ·{" "}
+          <Link href="/termos" className="underline hover:text-foreground">
+            Termos
+          </Link>
+        </span>
+        <span className="hidden md:inline">
+          Ferramenta educativa. Não substitui assessoria jurídica. Mensagens e documentos
+          são enviados à Anthropic (EUA) para gerar as respostas. Veja a{" "}
+          <Link href="/privacidade" className="underline hover:text-foreground">
+            Política de privacidade
+          </Link>{" "}
+          e os{" "}
+          <Link href="/termos" className="underline hover:text-foreground">
+            Termos de uso
+          </Link>
+          .
+        </span>
       </footer>
     </div>
   );

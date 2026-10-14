@@ -43,13 +43,15 @@ export function ChatInput({
     if (!textarea) return;
 
     textarea.style.height = "auto";
-    const lineHeight = Number.parseFloat(getComputedStyle(textarea).lineHeight) || 20;
-    const maxHeight = lineHeight * MAX_ROWS;
+    const style = getComputedStyle(textarea);
+    const lineHeight = Number.parseFloat(style.lineHeight) || 20;
+    const padding = Number.parseFloat(style.paddingTop) + Number.parseFloat(style.paddingBottom);
+    const maxHeight = lineHeight * MAX_ROWS + padding;
     const nextHeight = Math.min(textarea.scrollHeight, maxHeight);
 
     textarea.style.height = `${nextHeight}px`;
     textarea.style.overflowY = textarea.scrollHeight > maxHeight ? "auto" : "hidden";
-    setIsMultiline(nextHeight > lineHeight * 1.5);
+    setIsMultiline(nextHeight - padding > lineHeight * 1.5);
   }, []);
 
   useEffect(() => {
