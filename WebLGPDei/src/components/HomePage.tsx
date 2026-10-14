@@ -232,7 +232,7 @@ export function HomePage() {
     [renameSession],
   );
 
-  if (bootstrapping || loading) {
+  if (bootstrapping) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -256,7 +256,10 @@ export function HomePage() {
           sessions={sessions}
           activeSessionId={activeSessionId}
           onSelect={(id) => {
-            void loadSession(id);
+            setError(null);
+            void loadSession(id).catch((err) => {
+              setError(getApiErrorMessage(err, "Falha ao carregar sessão"));
+            });
             setSidebarOpen(false);
           }}
           onCreate={() => void handleCreateSession()}
@@ -292,7 +295,11 @@ export function HomePage() {
 
           {!user && sessionDetail && <GuestSessionBanner />}
 
-          {sessionDetail ? (
+          {loading ? (
+            <div className="flex flex-1 items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : sessionDetail ? (
             <ChatPanel
               sessionId={sessionDetail.session.id}
               messages={displayMessages}

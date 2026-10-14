@@ -42,26 +42,44 @@ export function useSessions(signedIn: boolean) {
 
   const loadSession = useCallback(
     async (sessionId: string, options?: { silent?: boolean }) => {
-      if (!options?.silent) setLoading(true);
-      try {
-        const detail = await apiFetch<SessionDetail>(`/sessions/${sessionId}`);
-        setSessionDetail(detail);
+      const silent = options?.silent ?? false;
+      const previousId = activeSessionIdRef.current;
+      if (!silent) {
+        activeSessionIdRef.current = sessionId;
         setActiveSessionId(sessionId);
-        setSessions((prev) =>
-          prev.map((session) =>
-            session.id === sessionId
-              ? {
-                  ...session,
-                  title: detail.session.title,
-                  updatedAt: detail.session.updatedAt,
-                }
-              : session,
-          ),
-        );
-        return detail;
-      } finally {
-        if (!options?.silent) setLoading(false);
+        setLoading(true);
       }
+      // A later selection supersedes this request; its response must not replace the newer session.
+      const isCurrent = () => activeSessionIdRef.current === sessionId;
+
+      let detail: SessionDetail;
+      try {
+        detail = await apiFetch<SessionDetail>(`/sessions/${sessionId}`);
+      } catch (err) {
+        if (!silent && isCurrent()) {
+          activeSessionIdRef.current = previousId;
+          setActiveSessionId(previousId);
+          setLoading(false);
+        }
+        throw err;
+      }
+
+      if (!silent && isCurrent()) setLoading(false);
+      if (!isCurrent()) return detail;
+
+      setSessionDetail(detail);
+      setSessions((prev) =>
+        prev.map((session) =>
+          session.id === sessionId
+            ? {
+                ...session,
+                title: detail.session.title,
+                updatedAt: detail.session.updatedAt,
+              }
+            : session,
+        ),
+      );
+      return detail;
     },
     [],
   );
