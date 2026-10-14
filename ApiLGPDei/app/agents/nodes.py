@@ -67,8 +67,7 @@ async def assess_node(state: GraphState) -> dict:
     else:
         assessment = result
 
-    if not assessment.disclaimer:
-        assessment.disclaimer = get_disclaimer(locale)
+    assessment.disclaimer = get_disclaimer(locale)
 
     summary_intro = (
         "## Análise de Conformidade LGPD\n\n"

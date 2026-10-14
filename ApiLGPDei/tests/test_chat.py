@@ -1,5 +1,6 @@
 from beanie import PydanticObjectId
 
+from app.agents.prompts import get_disclaimer
 from app.models import AssessmentSession
 from tests.fakes import FAKE_ASSESSMENT, FAKE_CHAT_REPLY
 from tests.helpers import create_session_id, send
@@ -8,13 +9,14 @@ from tests.helpers import create_session_id, send
 async def test_chat_streams_tokens_and_stores_messages(client):
     session_id = await create_session_id(client)
     events = await send(client, session_id, "O que é base legal?")
+    expected = f"{FAKE_CHAT_REPLY}\n\n_{get_disclaimer('pt')}_"
 
     assert len(events) > 1
-    assert "".join(e["content"] for e in events) == FAKE_CHAT_REPLY
+    assert "".join(e["content"] for e in events) == expected
 
     user, assistant = (await client.get(f"/api/sessions/{session_id}")).json()["messages"][-2:]
     assert user["role"] == "user"
-    assert (assistant["role"], assistant["messageType"], assistant["content"]) == ("assistant", "chat", FAKE_CHAT_REPLY)
+    assert (assistant["role"], assistant["messageType"], assistant["content"]) == ("assistant", "chat", expected)
 
 
 async def test_assessment_returns_structured_report(client):
@@ -27,7 +29,7 @@ async def test_assessment_returns_structured_report(client):
     last = (await client.get(f"/api/sessions/{session_id}")).json()["messages"][-1]
     assert last["messageType"] == "assessment"
     assert last["assessmentSnapshot"]["overall_risk"] == "high"
-    assert last["assessmentSnapshot"]["disclaimer"]
+    assert last["assessmentSnapshot"]["disclaimer"] == get_disclaimer("pt")
 
 
 async def test_stream_error_is_generic(client, monkeypatch):

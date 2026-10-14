@@ -47,6 +47,9 @@ flowchart LR
 - Privacy controls: consent capture, profile correction, data export, account deletion, privacy notice and terms (see
   [LGPD compliance](#lgpd-compliance)).
 - Chat with Server-Sent Events streaming, in Portuguese or English.
+- Guardrails: the agent only answers questions about the LGPD, never writes code, gives no direct legal advice or
+  drafted documents, and treats messages and documents as content rather than instructions. Every chat answer and
+  report ends with the "educational tool, not legal advice" disclaimer, appended by the API.
 - Document upload (PDF, DOCX, TXT, MD, CSV) with per-file and per-session limits; extracted text grounds the answers.
 - Compliance report: overall risk, 0-100 score, findings with severity, legal reference, evidence and recommendation.
 - Per-IP rate limits for sessions, messages and uploads, configurable through environment variables.

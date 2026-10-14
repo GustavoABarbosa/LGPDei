@@ -3,6 +3,7 @@ from collections.abc import AsyncGenerator
 from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage
 
 from app.agents.nodes import agent_graph
+from app.agents.prompts import get_disclaimer
 from app.agents.state import GraphState
 from app.models import AssessmentSession, Message, SessionDocument
 from app.utils.time import utcnow
@@ -80,6 +81,11 @@ async def stream_chat_response(
             content = payload["assess"]["response_content"]
             assessment = payload["assess"]["assessment_output"]
             yield content
+
+    if not assessment:
+        disclaimer = f"\n\n_{get_disclaimer(locale)}_"  # type: ignore[arg-type]
+        content += disclaimer
+        yield disclaimer
 
     await Message(
         session_id=session.id,
