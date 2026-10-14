@@ -7,6 +7,21 @@ citations.
 
 > Assistente educativo de conformidade com a LGPD. Não substitui assessoria jurídica.
 
+## Live demo
+
+- Web app: [lgpdei-web-five.vercel.app](https://lgpdei-web-five.vercel.app/) (Vercel)
+- API: [lgpdei-api.onrender.com](https://lgpdei-api.onrender.com) (Render), interactive docs at
+  [`/docs`](https://lgpdei-api.onrender.com/docs)
+- Database: MongoDB Atlas
+
+## Why I built it
+
+My day-to-day stack is TypeScript, Vue/Nuxt and Node.js. LGPDei is deliberately built with Python/FastAPI and
+Next.js/React, stacks I knew only at a basic level, to show that a developer with solid fundamentals can deliver a
+production-ready product in a different ecosystem. HTTP, authentication, data modelling, testing and security carry
+over between languages; AI-assisted development speeds up learning the idioms and libraries of a new stack, while the
+architecture, review and quality decisions remain the engineer's.
+
 | Streaming chat grounded in the LGPD | Structured compliance report |
 | --- | --- |
 | ![Chat](docs/screenshots/chat.png) | ![Report](docs/screenshots/report.png) |
@@ -16,7 +31,7 @@ citations.
 ```mermaid
 flowchart LR
   Web["WebLGPDei (Next.js 16)"] -->|"REST + SSE, HttpOnly cookies"| Api["ApiLGPDei (FastAPI)"]
-  Api --> Mongo[(MongoDB)]
+  Api --> Mongo[(MongoDB Atlas)]
   Api --> Graph["LangGraph agent"]
   Graph --> Claude["Anthropic Claude"]
 ```
@@ -98,7 +113,9 @@ volume created without them must be recreated (`docker compose down -v`, which d
 | `RATE_LIMIT_UPLOADS_PER_HOUR` | `10` | Per IP |
 | `MAX_FILES_PER_SESSION` / `MAX_FILE_SIZE_MB` / `MAX_EXTRACTED_TEXT_CHARS` | `10` / `5` / `50000` | Upload limits |
 
-The web app only needs `NEXT_PUBLIC_API_BASE` (default `http://localhost:3334/api`), which is inlined at build time.
+The web app reads two variables at build time: `NEXT_PUBLIC_API_BASE` (default `http://localhost:3334/api`), the base
+URL the browser calls, and `API_ORIGIN` (default `http://localhost:3334`), the target of the `/api/*` rewrite in
+`next.config.ts`. Setting `NEXT_PUBLIC_API_BASE=/api` sends every request through the web app's own origin.
 
 ### API endpoints
 
@@ -120,7 +137,7 @@ All routes are under `/api`; interactive docs at `/docs`.
 
 ## Quality
 
-- `ApiLGPDei`: `pytest` runs 45 tests against a real MongoDB with the LLM replaced by a fake chat model: auth, token
+- `ApiLGPDei`: `pytest` runs 47 tests against a real MongoDB with the LLM replaced by a fake chat model: auth, token
   revocation, consent, retention, account export and deletion, session ownership, uploads, rate limiting, token
   streaming through the graph and the structured assessment.
 - `WebLGPDei`: `npm run lint` (ESLint flat config with the React Compiler rules), `npm run typecheck` and
@@ -129,16 +146,27 @@ All routes are under `/api`; interactive docs at `/docs`.
 
 ## Deployment
 
-Both apps ship with a Dockerfile (`ApiLGPDei/Dockerfile`, `WebLGPDei/Dockerfile` using Next.js standalone output).
-A low-cost setup is MongoDB Atlas (free tier), the API on Render, Fly.io or Railway, and the web app on Vercel. When
-the web and API live on different sites, set `COOKIE_SAMESITE=none`, `COOKIE_SECURE=true` and add the web origin to
-`CORS_ORIGINS`. Set `FORWARDED_ALLOW_IPS` to the platform's proxy address so rate limits see the real client IP.
+Production (see [Live demo](#live-demo)):
+
+| Part | Host | Notes |
+| --- | --- | --- |
+| `WebLGPDei` | Vercel | Built by Vercel's Next.js runtime with `NEXT_PUBLIC_API_BASE=/api` and `API_ORIGIN=https://lgpdei-api.onrender.com`. |
+| `ApiLGPDei` | Render | The Dockerfile binds uvicorn to the `PORT` Render provides (default `3334`). |
+| MongoDB | MongoDB Atlas | `MONGODB_URI` is the Atlas connection string including the `lgpdei` database name. |
+
+The browser only talks to the Vercel origin: the `/api/*` rewrite forwards requests to Render, so the auth and session
+cookies are first-party and the API defaults (`COOKIE_SAMESITE=lax`, `COOKIE_SECURE=true`) work as is. `CORS_ORIGINS`
+only matters if a browser calls the API directly. Set `FORWARDED_ALLOW_IPS` to the proxy addresses in front of the API
+so rate limits see the real client IP.
+
+Both Dockerfiles (`ApiLGPDei/Dockerfile`, and `WebLGPDei/Dockerfile` using Next.js standalone output) are also built by
+CI and used by `docker compose --profile app` for self-hosting.
 
 ## LGPD compliance
 
 | Topic | Implementation |
 | --- | --- |
-| Transparency | `/privacidade` (privacy notice) and `/termos` (terms), linked from the footer, the auth page and every consent checkbox. Fill in the `[PLACEHOLDERS]` (controller, DPO contact, providers, log and backup retention, venue) before going live. |
+| Transparency | `/privacidade` (privacy notice) and `/termos` (terms), linked from the footer, the auth page and every consent checkbox. The privacy notice lists the processors: Anthropic (USA), Render (API hosting, USA), MongoDB Atlas (database, São Paulo) and Vercel (web hosting, USA). |
 | Consent (art. 7, I and art. 33, VIII) | Unchecked checkbox covering terms, privacy notice, transfer to Anthropic (USA) and an 18+ statement. Required on register (`User.consent_version` / `consent_at`) and before a guest's first session (stored on the session; later guest sessions of the same browser inherit it). Uploads and messages to a guest session without current consent are rejected. Bump `CONSENT_VERSION` in `app/consent.py` whenever the texts change. |
 | Sensitive data (art. 11) | The consent gate and the chat input warn users not to send sensitive or third-party personal data. |
 | Retention | Guest sessions, messages and documents expire 72 h after creation (TTL index). Account sessions have `expires_at = null` and are kept until deleted. Only extracted document text is stored, never the file. |
