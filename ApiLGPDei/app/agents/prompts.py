@@ -24,6 +24,22 @@ def get_disclaimer(locale: AppLocale) -> str:
     return DISCLAIMER_PT if locale == "pt" else DISCLAIMER_EN
 
 
+def append_disclaimer(content: str, locale: AppLocale) -> str:
+    disclaimer = get_disclaimer(locale)
+    if disclaimer in content:
+        return content
+    return f"{content}\n\n_{disclaimer}_"
+
+
+def strip_disclaimer(content: str) -> str:
+    """Removes trailing disclaimers so the model does not learn to repeat them from the history."""
+    content = content.rstrip()
+    disclaimers = [f"_{d}_" for d in (DISCLAIMER_PT, DISCLAIMER_EN)] + [DISCLAIMER_PT, DISCLAIMER_EN]
+    while stripped := next((d for d in disclaimers if content.endswith(d)), None):
+        content = content.removesuffix(stripped).rstrip()
+    return content
+
+
 CHAT_SYSTEM_PROMPT: dict[AppLocale, str] = {
     "pt": """Você é o assistente LGPDei, uma ferramenta educativa que tira dúvidas sobre a LGPD (Lei 13.709/2018) e ajuda pessoas a entender como a lei se aplica ao seu trabalho, projeto ou fluxo de dados.
 

@@ -3,7 +3,7 @@ from collections.abc import AsyncGenerator
 from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage
 
 from app.agents.nodes import agent_graph
-from app.agents.prompts import get_disclaimer
+from app.agents.prompts import append_disclaimer, strip_disclaimer
 from app.agents.state import GraphState
 from app.models import AssessmentSession, Message, SessionDocument
 from app.utils.time import utcnow
@@ -20,7 +20,7 @@ async def load_session_context(session: AssessmentSession) -> tuple[list, list[d
         if msg.role == "user":
             lc_messages.append(HumanMessage(content=msg.content))
         else:
-            lc_messages.append(AIMessage(content=msg.content))
+            lc_messages.append(AIMessage(content=strip_disclaimer(msg.content)))
 
     doc_context = [
         {"file_name": d.file_name, "extracted_text": d.extracted_text}
@@ -83,9 +83,10 @@ async def stream_chat_response(
             yield content
 
     if not assessment:
-        disclaimer = f"\n\n_{get_disclaimer(locale)}_"  # type: ignore[arg-type]
-        content += disclaimer
-        yield disclaimer
+        with_disclaimer = append_disclaimer(content, locale)  # type: ignore[arg-type]
+        if with_disclaimer != content:
+            yield with_disclaimer.removeprefix(content)
+            content = with_disclaimer
 
     await Message(
         session_id=session.id,
