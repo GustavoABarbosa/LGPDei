@@ -9,7 +9,7 @@ type Props = {
 
 export function LegalPage({ title, updatedAt, children }: Props) {
   return (
-    <div className="min-h-screen bg-[var(--background)] px-4 py-10">
+    <div className="min-h-dvh bg-[var(--background)] px-4 py-10">
       <article className="mx-auto max-w-3xl space-y-6 rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 text-sm leading-relaxed md:p-10">
         <header className="space-y-2">
           <Link href="/" className="inline-flex items-center gap-2 text-sm font-semibold">

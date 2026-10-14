@@ -30,7 +30,7 @@ export function ChatMessageBubble({ message }: Props) {
       <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
         <div
           className={cn(
-            "max-w-[85%] min-w-[120px] px-4 py-3 text-sm leading-relaxed rounded-xl",
+            "max-w-[85%] min-w-[120px] px-4 py-3 text-sm leading-relaxed rounded-xl [overflow-wrap:anywhere]",
             isUser
               ? "bg-primary text-[var(--primary-foreground)] rounded-tr-sm"
               : "border border-[var(--border)] bg-[var(--card)] rounded-tl-sm",

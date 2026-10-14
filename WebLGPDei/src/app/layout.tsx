@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next"
 import { AuthProvider } from "@/hooks/useAuth";
 
@@ -16,6 +16,12 @@ export const metadata: Metadata = {
     apple: [{ url: "/LGPDeiIcon.png", type: "image/png" }],
     shortcut: ["/LGPDeiIcon.svg"],
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({

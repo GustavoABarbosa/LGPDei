@@ -70,6 +70,15 @@ const markdownComponents: Components = {
       </code>
     );
   },
+  table: ({ children }) => (
+    <div className="mb-3 overflow-x-auto last:mb-0">
+      <table className="w-full border-collapse text-left text-xs">{children}</table>
+    </div>
+  ),
+  th: ({ children }) => (
+    <th className="border border-[var(--border)] px-2 py-1 font-semibold">{children}</th>
+  ),
+  td: ({ children }) => <td className="border border-[var(--border)] px-2 py-1">{children}</td>,
   pre: ({ children }) => (
     <pre className="mb-3 overflow-x-auto last:mb-0">{children}</pre>
   ),
@@ -82,7 +91,7 @@ type Props = {
 
 export function MarkdownContent({ content, className }: Props) {
   return (
-    <div className={cn("chat-markdown text-sm", className)}>
+    <div className={cn("chat-markdown min-w-0 text-sm [overflow-wrap:anywhere]", className)}>
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
         {content}
       </ReactMarkdown>

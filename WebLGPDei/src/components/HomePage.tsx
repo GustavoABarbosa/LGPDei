@@ -234,14 +234,14 @@ export function HomePage() {
 
   if (bootstrapping) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-dvh items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-dvh flex-col overflow-hidden">
       <div className="relative flex min-h-0 flex-1">
         {sidebarOpen && (
           <button

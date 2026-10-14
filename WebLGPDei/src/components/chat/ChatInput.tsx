@@ -51,7 +51,9 @@ export function ChatInput({
 
     textarea.style.height = `${nextHeight}px`;
     textarea.style.overflowY = textarea.scrollHeight > maxHeight ? "auto" : "hidden";
-    setIsMultiline(nextHeight - padding > lineHeight * 1.5);
+    // Stays multiline until cleared: the stacked layout widens the textarea, which would otherwise flip it back.
+    const wraps = nextHeight - padding > lineHeight * 1.5;
+    setIsMultiline((prev) => wraps || (prev && textarea.value !== ""));
   }, []);
 
   useEffect(() => {

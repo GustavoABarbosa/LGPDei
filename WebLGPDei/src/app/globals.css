@@ -106,6 +106,15 @@ html::-webkit-scrollbar-corner {
   box-sizing: border-box;
 }
 
+/* iOS Safari zooms into focused fields with a font size below 16px */
+@media (max-width: 767px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
 button {
   @apply cursor-pointer transition-all duration-300;
 }
