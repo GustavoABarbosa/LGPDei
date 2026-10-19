@@ -1,10 +1,16 @@
 import os
 
-os.environ.setdefault("MONGODB_URI", "mongodb://127.0.0.1:27017/lgpdei_test")
-os.environ.setdefault("SESSION_SECRET", "test-session-secret-at-least-32-characters")
-os.environ.setdefault("JWT_SECRET", "test-jwt-secret-at-least-32-characters-long")
-os.environ.setdefault("ANTHROPIC_API_KEY", "test-key")
-os.environ.setdefault("COOKIE_SECURE", "false")
+# Force test settings before app.config is imported (overrides ApiLGPDei/.env).
+os.environ["APP_ENV"] = "test"
+os.environ["MONGODB_URI"] = os.environ.get(
+    "TEST_MONGODB_URI",
+    "mongodb://lgpdei:change-me-strong-password@127.0.0.1:27017/lgpdei_test?authSource=admin",
+)
+os.environ["SESSION_SECRET"] = "test-session-secret-at-least-32-characters"
+os.environ["JWT_SECRET"] = "test-jwt-secret-at-least-32-characters-long"
+os.environ["ANTHROPIC_API_KEY"] = "test-key"
+os.environ["COOKIE_SECURE"] = "false"
+os.environ["PII_MODE"] = "off"
 
 import pytest  # noqa: E402
 import pytest_asyncio  # noqa: E402

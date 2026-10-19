@@ -38,6 +38,9 @@ export function ChatInput({
   const fileRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const hasPendingFiles = pendingFiles.length > 0;
+  const stacked = isMultiline || hasPendingFiles;
+
   const adjustTextarea = useCallback(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
@@ -58,7 +61,7 @@ export function ChatInput({
 
   useEffect(() => {
     adjustTextarea();
-  }, [content, adjustTextarea]);
+  }, [content, hasPendingFiles, adjustTextarea]);
 
   function addPendingFile(file: File) {
     setPendingFiles((prev) => [
@@ -140,7 +143,7 @@ export function ChatInput({
         onSubmit={handleSubmit}
         className={cn(
           "border border-[var(--border)] bg-[var(--background)]",
-          isMultiline ? "flex flex-col gap-1 rounded-xl p-2" : "flex items-center gap-1 rounded-full p-1",
+          stacked ? "flex flex-col gap-1 rounded-xl p-2" : "flex items-center gap-1 rounded-full p-1",
         )}
       >
         <input
@@ -151,7 +154,15 @@ export function ChatInput({
           onChange={handleFileChange}
         />
 
-        {!isMultiline && attachButton}
+        {hasPendingFiles && (
+          <DocumentAttachmentList
+            items={pendingFiles}
+            onRemove={removePendingFile}
+            className="px-1 pt-0.5"
+          />
+        )}
+
+        {!stacked && attachButton}
 
         <textarea
           ref={textareaRef}
@@ -162,7 +173,7 @@ export function ChatInput({
           disabled={disabled || sending}
           className={cn(
             "custom-scrollbar w-full resize-none bg-transparent text-sm outline-none",
-            isMultiline ? "px-2 py-1.5" : "rounded-xl py-2",
+            stacked ? "px-2 py-1.5" : "rounded-xl py-2",
           )}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
@@ -172,16 +183,9 @@ export function ChatInput({
           }}
         />
 
-        {isMultiline ? (
+        {stacked ? (
           <div className="flex items-center justify-between gap-1 px-1">
             {attachButton}
-            {pendingFiles.length > 0 && (
-              <DocumentAttachmentList
-                items={pendingFiles}
-                onRemove={removePendingFile}
-                className="flex-1"
-              />
-            )}
             {sendButton}
           </div>
         ) : (

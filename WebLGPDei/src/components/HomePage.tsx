@@ -33,17 +33,12 @@ export function HomePage() {
     reloadAfterSignIn,
   } = useSessions(user !== null);
 
-  const { sending, streamingContent, displayMessages, sendMessage, sendAssessmentRequest } =
-    useChat(sessionDetail, loadSession);
+  const { sending, streamingContent, displayMessages, sendMessage, sendAssessmentRequest } = useChat(
+    sessionDetail,
+    loadSession,
+  );
 
-  const {
-    uploading,
-    allDocuments,
-    loadingAll,
-    uploadDocument,
-    loadAllDocuments,
-    deleteDocument,
-  } = useDocuments(
+  const { uploading, allDocuments, loadingAll, uploadDocument, loadAllDocuments, deleteDocument } = useDocuments(
     sessionDetail,
     loadSession,
   );
@@ -72,9 +67,7 @@ export function HomePage() {
         await ensureActiveSession();
       } catch (err) {
         const limitMessage = handleError(err, "sessions");
-        setError(
-          limitMessage ?? getApiErrorMessage(err, "Falha ao carregar sessões"),
-        );
+        setError(limitMessage ?? getApiErrorMessage(err, "Falha ao carregar sessões"));
       } finally {
         setBootstrapping(false);
       }
@@ -105,20 +98,12 @@ export function HomePage() {
         }
       } catch (err) {
         const limitMessage = handleError(err, "sessions");
-        setError(
-          limitMessage ?? getApiErrorMessage(err, "Falha ao carregar sessões"),
-        );
+        setError(limitMessage ?? getApiErrorMessage(err, "Falha ao carregar sessões"));
       } finally {
         setBootstrapping(false);
       }
     })();
-  }, [
-    authLoading,
-    handleError,
-    reloadAfterSignIn,
-    resetAfterSignOut,
-    user,
-  ]);
+  }, [authLoading, handleError, reloadAfterSignIn, resetAfterSignOut, user]);
 
   const handleSend = useCallback(
     async (content: string, files: File[] = []) => {
@@ -132,17 +117,15 @@ export function HomePage() {
         if (files.length > 0) {
           void loadAllDocuments();
         }
-        await sendMessage(content, files.map((file) => file.name));
+        await sendMessage(
+          content,
+          files.map((file) => file.name),
+        );
       } catch (err) {
         const limitMessage = handleError(err, files.length > 0 ? "uploads" : "messages");
         setError(
           limitMessage ??
-            getApiErrorMessage(
-              err,
-              files.length > 0
-                ? "Falha ao enviar documento"
-                : "Falha ao enviar mensagem",
-            ),
+            getApiErrorMessage(err, files.length > 0 ? "Falha ao enviar documento" : "Falha ao enviar mensagem"),
         );
       }
     },
@@ -156,9 +139,7 @@ export function HomePage() {
       await sendAssessmentRequest();
     } catch (err) {
       const limitMessage = handleError(err, "messages");
-      setError(
-        limitMessage ?? getApiErrorMessage(err, "Falha ao gerar análise"),
-      );
+      setError(limitMessage ?? getApiErrorMessage(err, "Falha ao gerar análise"));
     }
   }, [handleError, isLimited, sendAssessmentRequest]);
 
@@ -188,9 +169,7 @@ export function HomePage() {
       await createSession();
     } catch (err) {
       const limitMessage = handleError(err, "sessions");
-      setError(
-        limitMessage ?? getApiErrorMessage(err, "Falha ao criar sessão"),
-      );
+      setError(limitMessage ?? getApiErrorMessage(err, "Falha ao criar sessão"));
     }
   }, [createSession, currentSessionEmpty, handleError, isLimited]);
 
@@ -200,9 +179,7 @@ export function HomePage() {
       await createSession({ consent: true });
     } catch (err) {
       const limitMessage = handleError(err, "sessions");
-      setError(
-        limitMessage ?? getApiErrorMessage(err, "Falha ao criar sessão"),
-      );
+      setError(limitMessage ?? getApiErrorMessage(err, "Falha ao criar sessão"));
     }
   }, [createSession, handleError]);
 
@@ -272,10 +249,7 @@ export function HomePage() {
           onDeleteDocument={handleDeleteDocument}
           onError={setError}
           onCloseMobile={() => setSidebarOpen(false)}
-          className={cn(
-            "fixed inset-y-0 left-0 z-50 md:relative md:z-auto",
-            sidebarOpen ? "flex" : "hidden md:flex",
-          )}
+          className={cn("fixed inset-y-0 left-0 z-50 md:relative md:z-auto", sidebarOpen ? "flex" : "hidden md:flex")}
         />
 
         <main className="relative flex min-h-0 flex-1 flex-col">
@@ -288,7 +262,9 @@ export function HomePage() {
             >
               <Menu className="h-5 w-5" />
             </button>
-            <span className="ml-2 text-sm font-medium">LGPD<span className="text-primary">ei</span></span>
+            <span className="ml-2 text-sm font-medium">
+              LGPD<span className="text-primary">ei</span>
+            </span>
           </div>
 
           {error && <ErrorBanner message={error} />}
@@ -315,9 +291,7 @@ export function HomePage() {
           ) : !user ? (
             <GuestConsentGate onAccept={handleGuestConsent} />
           ) : (
-            <div className="flex flex-1 items-center justify-center text-muted">
-              Nenhuma sessão ativa
-            </div>
+            <div className="flex flex-1 items-center justify-center text-muted">Nenhuma sessão ativa</div>
           )}
         </main>
       </div>
@@ -334,8 +308,8 @@ export function HomePage() {
           </Link>
         </span>
         <span className="hidden md:inline">
-          Ferramenta educativa. Não substitui assessoria jurídica. Mensagens e documentos
-          são enviados à Anthropic (EUA) para gerar as respostas. Veja a{" "}
+          Ferramenta educativa. Não substitui assessoria jurídica. Mensagens e documentos são enviados à Anthropic (EUA)
+          para gerar as respostas. Veja a{" "}
           <Link href="/privacidade" className="underline hover:text-foreground">
             Política de privacidade
           </Link>{" "}

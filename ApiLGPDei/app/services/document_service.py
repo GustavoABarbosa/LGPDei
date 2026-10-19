@@ -4,10 +4,23 @@ from fastapi import UploadFile
 from app.config import settings
 from app.models import AssessmentSession, Message, SessionDocument
 from app.models.user import PublicUser
+import re
+
 from app.services.document_parser import extract_document_text, is_supported_file
+from app.services.pageindex_service import build_tree_from_text, choose_indexing_mode
 from app.services.session_service import list_sessions_for_token, list_sessions_for_user
 from app.utils.http_error import HttpError
 from app.utils.time import utcnow
+
+PREVIEW_MAX_CHARS = 160
+
+
+def document_preview(extracted_text: str, *, max_chars: int = PREVIEW_MAX_CHARS) -> str:
+    """Short plain-text snippet for document lists (not the full extracted body)."""
+    compact = re.sub(r"\s+", " ", extracted_text).strip()
+    if len(compact) <= max_chars:
+        return compact
+    return compact[: max_chars - 1].rstrip() + "…"
 
 
 async def upload_session_document(
@@ -38,12 +51,23 @@ async def upload_session_document(
     if total_text + len(extracted) > settings.max_extracted_text_chars:
         raise HttpError(400, "Limite total de texto extraído da sessão excedido")
 
+    indexing_mode = choose_indexing_mode(extracted, settings.pageindex_min_chars)
+    page_index_tree = None
+    if indexing_mode == "pageindex":
+        try:
+            page_index_tree = build_tree_from_text(extracted, root_title=file.filename)
+        except Exception:
+            indexing_mode = "full"
+            page_index_tree = None
+
     doc = SessionDocument(
         session_id=session.id,
         expires_at=session.expires_at,
         file_name=file.filename,
         mime_type=file.content_type or "application/octet-stream",
         extracted_text=extracted,
+        indexing_mode=indexing_mode,
+        page_index_tree=page_index_tree,
         order=existing_count,
     )
     await doc.insert()
@@ -56,6 +80,7 @@ async def upload_session_document(
         "fileName": doc.file_name,
         "mimeType": doc.mime_type,
         "order": doc.order,
+        "indexingMode": doc.indexing_mode,
         "uploadedAt": doc.uploaded_at.isoformat(),
     }
 
@@ -90,6 +115,7 @@ async def list_accessible_documents(
             "uploadedAt": document.uploaded_at.isoformat(),
             "sessionId": str(document.session_id),
             "sessionTitle": session_map[document.session_id].title,
+            "preview": document_preview(document.extracted_text),
         }
         for document in documents
     ]

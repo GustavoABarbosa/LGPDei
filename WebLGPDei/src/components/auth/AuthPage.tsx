@@ -38,6 +38,7 @@ export function AuthPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [consent, setConsent] = useState(false);
+  const [adoptGuestSessions, setAdoptGuestSessions] = useState(false);
   const [touched, setTouched] = useState(EMPTY_TOUCHED);
   const [submitAttempted, setSubmitAttempted] = useState(false);
 
@@ -79,9 +80,15 @@ export function AuthPage() {
     setLoading(true);
     try {
       if (mode === "login") {
-        await signIn(email.trim(), password);
+        await signIn(email.trim(), password, adoptGuestSessions);
       } else {
-        await signUp(name.trim(), email.trim(), password, consent);
+        await signUp(
+          name.trim(),
+          email.trim(),
+          password,
+          consent,
+          adoptGuestSessions,
+        );
       }
       router.push("/");
     } catch (err) {
@@ -241,6 +248,19 @@ export function AuthPage() {
               }
             />
           )}
+
+          <label className="flex cursor-pointer items-start gap-2 text-sm text-muted">
+            <input
+              type="checkbox"
+              checked={adoptGuestSessions}
+              onChange={(e) => setAdoptGuestSessions(e.target.checked)}
+              className="mt-1 size-4 shrink-0 rounded border-[var(--border)]"
+            />
+            <span>
+              Vincular a esta conta as conversas anônimas deste navegador (opcional).
+              Em computadores compartilhados, deixe desmarcado.
+            </span>
+          </label>
 
           {error && <ErrorBanner message={error} inline />}
 

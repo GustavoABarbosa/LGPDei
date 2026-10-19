@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { ChatMessageBubble } from "@/components/chat/ChatMessage";
 import { MarkdownContent } from "@/components/chat/MarkdownContent";
+import { KnowledgeFreshnessNotice } from "@/components/consent/KnowledgeFreshnessNotice";
 import { SensitiveDataNotice } from "@/components/consent/SensitiveDataNotice";
 import type { ChatMessage } from "@/types";
 
@@ -55,7 +56,8 @@ export function ChatPanel({
         uploadDisabled={uploadsLimited}
         uploadDisabledMessage={uploadLimitMessage}
       />
-      <SensitiveDataNotice compactOnMobile className="mt-1.5 px-3 text-center md:mt-2" />
+      <SensitiveDataNotice compactOnMobile className="mt-1.5 px-3 text-center md:mt-2 hidden" />
+      <KnowledgeFreshnessNotice compactOnMobile className="mt-1.5 md:mt-2 px-3 text-center" />
     </>
   );
 

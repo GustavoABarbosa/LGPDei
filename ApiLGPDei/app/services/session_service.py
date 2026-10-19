@@ -47,9 +47,11 @@ async def get_session_detail(session: AssessmentSession) -> dict:
 
 
 async def list_sessions_for_token(session_token: str) -> list[AssessmentSession]:
+    """Only guest sessions — account sessions are listed via JWT ownership."""
     token_hash = hash_session_token(session_token)
     return await AssessmentSession.find(
-        AssessmentSession.session_token_hash == token_hash
+        AssessmentSession.session_token_hash == token_hash,
+        AssessmentSession.user_id == None,  # noqa: E711
     ).sort("-updated_at").to_list()
 
 
@@ -59,14 +61,14 @@ async def list_sessions_for_user(user: PublicUser) -> list[AssessmentSession]:
     ).sort("-updated_at").to_list()
 
 
-async def link_sessions_for_token(session_token: str, user_id: str) -> None:
-    """Adopts the guest sessions of this browser; account sessions are kept until the user deletes them."""
+async def link_sessions_for_token(session_token: str, user_id: str) -> int:
+    """Adopts guest sessions of this browser when the user explicitly opts in. Returns count linked."""
     sessions = await AssessmentSession.find(
         AssessmentSession.session_token_hash == hash_session_token(session_token),
         AssessmentSession.user_id == None,  # noqa: E711
     ).to_list()
     if not sessions:
-        return
+        return 0
 
     session_ids = [session.id for session in sessions]
     await AssessmentSession.find(In(AssessmentSession.id, session_ids)).update(
@@ -76,6 +78,7 @@ async def link_sessions_for_token(session_token: str, user_id: str) -> None:
     await SessionDocument.find(In(SessionDocument.session_id, session_ids)).update(
         Set({SessionDocument.expires_at: None})
     )
+    return len(session_ids)
 
 
 async def delete_sessions(session_ids: list[PydanticObjectId]) -> None:

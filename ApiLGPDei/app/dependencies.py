@@ -1,5 +1,5 @@
 from beanie import PydanticObjectId
-from fastapi import Cookie, Depends
+from fastapi import Cookie, Depends, Request
 
 from app.consent import CONSENT_VERSION
 from app.models import AssessmentSession
@@ -38,6 +38,17 @@ async def get_optional_user(
         return None
 
 
+async def get_optional_account(
+    auth_token: str | None = Cookie(default=None, alias="auth_token"),
+) -> User | None:
+    if not auth_token:
+        return None
+    try:
+        return await get_user_from_token(auth_token)
+    except HttpError:
+        return None
+
+
 async def get_owned_session(
     session_id: str,
     session_token: str | None = Depends(get_optional_session_token),
@@ -52,8 +63,11 @@ async def get_owned_session(
     if not session:
         raise HttpError(404, "Sessão não encontrada")
 
-    if user and session.user_id and str(session.user_id) == user.id:
-        return session
+    # Account-owned sessions require a matching JWT — session_token alone is not enough.
+    if session.user_id is not None:
+        if user and str(session.user_id) == user.id:
+            return session
+        raise HttpError(403, "Acesso negado à sessão")
 
     if session_token and session.session_token_hash == hash_session_token(session_token):
         return session
@@ -63,8 +77,28 @@ async def get_owned_session(
 
 async def get_consented_session(
     session: AssessmentSession = Depends(get_owned_session),
+    account: User | None = Depends(get_optional_account),
 ) -> AssessmentSession:
-    """Guests must have accepted the current terms on the session before sending data to it."""
-    if session.user_id is None and session.consent_version != CONSENT_VERSION:
-        raise HttpError(403, "É necessário aceitar os termos de uso e a política de privacidade")
+    """Guests and accounts must have accepted the current terms before sending data."""
+    if session.user_id is None:
+        if session.consent_version != CONSENT_VERSION:
+            raise HttpError(
+                403,
+                "É necessário aceitar os termos de uso e a política de privacidade",
+            )
+        return session
+
+    if not account or str(account.id) != str(session.user_id):
+        raise HttpError(403, "Acesso negado à sessão")
+
+    if account.consent_version != CONSENT_VERSION:
+        raise HttpError(
+            403,
+            "É necessário aceitar novamente os termos de uso e a política de privacidade",
+        )
     return session
+
+
+def require_csrf_header_if_needed(request: Request) -> None:
+    """No-op helper kept for tests; middleware enforces CSRF when SameSite=none."""
+    _ = request

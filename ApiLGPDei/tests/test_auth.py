@@ -73,14 +73,28 @@ async def test_logout_revokes_the_token(client, other_client):
     assert (await other_client.get("/api/auth/me")).status_code == 401
 
 
-async def test_guest_sessions_are_linked_on_register(client):
+async def test_guest_sessions_are_linked_on_register_when_opted_in(client):
     session_id = (await create_session(client))["id"]
 
-    await register(client)
+    await register(client, adopt_guest_sessions=True)
     client.cookies.delete("session_token")
 
     sessions = (await client.get("/api/sessions")).json()["sessions"]
     assert [s["id"] for s in sessions] == [session_id]
+
+
+async def test_guest_sessions_are_not_linked_by_default(client):
+    session_id = (await create_session(client))["id"]
+
+    await register(client, adopt_guest_sessions=False)
+    client.cookies.delete("session_token")
+
+    sessions = (await client.get("/api/sessions")).json()["sessions"]
+    assert sessions == []
+
+    # Guest session remains accessible only with the original session cookie + no JWT...
+    # After register, auth cookie exists; session_token was deleted above.
+    # Recreate guest cookie would be needed; assert account list is empty is enough.
 
 
 async def test_update_profile(client):

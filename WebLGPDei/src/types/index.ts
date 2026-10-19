@@ -37,6 +37,8 @@ export type SessionDocumentMeta = {
 export type UserDocument = SessionDocumentMeta & {
   sessionId: string;
   sessionTitle: string;
+  /** Short snippet of extracted text for list UIs. */
+  preview: string;
 };
 
 export type ChatSession = {

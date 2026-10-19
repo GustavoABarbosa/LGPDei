@@ -15,6 +15,7 @@ import { createPortal } from "react-dom";
 
 import { UserMenu } from "@/components/account/UserMenu";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Tooltip } from "@/components/Tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsClient } from "@/hooks/useIsClient";
 import { cn } from "@/lib/utils";
@@ -446,8 +447,14 @@ export function SessionSidebar({
                 >
                   <FileText className="mt-0.5 size-4 shrink-0 text-muted" />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{document.fileName}</p>
-                    <p className="truncate text-xs text-muted">{document.sessionTitle}</p>
+                    <Tooltip content={document.fileName} side="right" className="w-full min-w-0">
+                      <p className="w-full truncate text-sm font-medium">{document.fileName}</p>
+                    </Tooltip>
+                    <Tooltip content={document.preview || document.sessionTitle} side="right" className="w-full min-w-0">
+                      <p className="w-full truncate text-xs text-muted">
+                        {document.preview || document.sessionTitle}
+                      </p>
+                    </Tooltip>
                     <p className="text-xs text-muted">
                       {new Date(document.uploadedAt).toLocaleString("pt-BR")}
                     </p>

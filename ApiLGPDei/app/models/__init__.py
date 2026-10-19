@@ -35,6 +35,8 @@ class SessionDocument(Document):
     file_name: str
     mime_type: str
     extracted_text: str
+    indexing_mode: str = "full"  # full | pageindex
+    page_index_tree: dict | None = None
     order: int = 0
     uploaded_at: datetime = Field(default_factory=utcnow)
     # Copied from the session so MongoDB's TTL monitor deletes it together with the session.

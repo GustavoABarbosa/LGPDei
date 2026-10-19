@@ -5,11 +5,17 @@ from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage
 from app.agents.nodes import agent_graph
 from app.agents.prompts import append_disclaimer, strip_disclaimer
 from app.agents.state import GraphState
+from app.config import settings
 from app.models import AssessmentSession, Message, SessionDocument
+from app.services.document_context import build_document_contexts
+from app.services.knowledge_service import retrieve_corpus_excerpts
 from app.utils.time import utcnow
 
 
-async def load_session_context(session: AssessmentSession) -> tuple[list, list[dict], dict | None]:
+async def load_session_context(
+    session: AssessmentSession,
+    query: str,
+) -> tuple[list, list[dict], dict | None, list[dict[str, str]]]:
     messages = await Message.find(Message.session_id == session.id).sort("created_at").to_list()
     documents = await SessionDocument.find(
         SessionDocument.session_id == session.id
@@ -22,10 +28,11 @@ async def load_session_context(session: AssessmentSession) -> tuple[list, list[d
         else:
             lc_messages.append(AIMessage(content=strip_disclaimer(msg.content)))
 
-    doc_context = [
-        {"file_name": d.file_name, "extracted_text": d.extracted_text}
-        for d in documents
-    ]
+    doc_context = build_document_contexts(documents, query)
+    law_excerpts = retrieve_corpus_excerpts(
+        query,
+        max_chars=settings.max_corpus_retrieved_chars,
+    )
 
     last_assessment = None
     for msg in reversed(messages):
@@ -33,7 +40,7 @@ async def load_session_context(session: AssessmentSession) -> tuple[list, list[d
             last_assessment = msg.assessment_snapshot.model_dump()
             break
 
-    return lc_messages, doc_context, last_assessment
+    return lc_messages, doc_context, last_assessment, law_excerpts
 
 
 def locale_from_header(accept_language: str | None) -> str:
@@ -49,7 +56,10 @@ async def stream_chat_response(
     attachments: list[str] | None = None,
 ) -> AsyncGenerator[str, None]:
     """Runs the agent graph, streaming chat tokens as they arrive and the assessment report once it is complete."""
-    lc_messages, doc_context, last_assessment = await load_session_context(session)
+    lc_messages, doc_context, last_assessment, law_excerpts = await load_session_context(
+        session,
+        user_content,
+    )
 
     await Message(
         session_id=session.id,
@@ -65,6 +75,7 @@ async def stream_chat_response(
         "locale": locale,  # type: ignore[typeddict-item]
         "messages": lc_messages,
         "documents": doc_context,  # type: ignore[typeddict-item]
+        "law_excerpts": law_excerpts,
         "last_assessment": last_assessment,
         "user_content": user_content,
     }

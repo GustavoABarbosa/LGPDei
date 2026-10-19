@@ -21,6 +21,7 @@ class RegisterBody(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
     consent: bool = False
+    adopt_guest_sessions: bool = False
 
     @field_validator("password")
     @classmethod
@@ -36,6 +37,7 @@ class RegisterBody(BaseModel):
 class LoginBody(BaseModel):
     email: EmailStr
     password: str = Field(min_length=1, max_length=128)
+    adopt_guest_sessions: bool = False
 
 
 class UpdateProfileBody(BaseModel):

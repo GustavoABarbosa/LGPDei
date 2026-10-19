@@ -1,0 +1,13 @@
+{
+  "version": "2026.10.16",
+  "updated_at": "2026-10-16",
+  "title": "Lei Geral de Proteção de Dados Pessoais (LGPD)",
+  "sources": [
+    {
+      "name": "Lei nº 13.709/2018",
+      "url": "http://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm",
+      "file": "lei-13709-2018.md"
+    }
+  ],
+  "notes": "Corpus estático versionado. Atualize o markdown, bump version/updated_at e regenere o índice (python -m scripts.build_knowledge_index) após mudanças na legislação ou no texto."
+}

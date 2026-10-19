@@ -8,21 +8,32 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from app.config import settings
 from app.database import init_db
+from app.middleware.csrf import CsrfHeaderMiddleware
 from app.middleware.rate_limit import limiter
 from app.routers.auth import auth_router
 from app.routers.documents import all_documents_router, documents_router
 from app.routers.messages import messages_router
 from app.routers.sessions import sessions_router
+from app.services.knowledge_service import get_knowledge_manifest, warm_corpus_index
 from app.utils.http_error import HttpError
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+    warm_corpus_index()
     yield
 
 
-app = FastAPI(title="LGPDei API", lifespan=lifespan)
+docs_url = None if settings.app_env == "production" else "/docs"
+redoc_url = None if settings.app_env == "production" else "/redoc"
+
+app = FastAPI(
+    title="LGPDei API",
+    lifespan=lifespan,
+    docs_url=docs_url,
+    redoc_url=redoc_url,
+)
 
 app.state.limiter = limiter
 
@@ -38,6 +49,7 @@ async def rate_limit_handler(request: Request, _exc: RateLimitExceeded):
 
 
 app.add_middleware(SlowAPIMiddleware)
+app.add_middleware(CsrfHeaderMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -56,7 +68,12 @@ async def http_error_handler(_request: Request, exc: HttpError):
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok"}
+    manifest = get_knowledge_manifest()
+    return {
+        "status": "ok",
+        "knowledgeVersion": manifest["version"],
+        "knowledgeUpdatedAt": manifest["updated_at"],
+    }
 
 
 app.include_router(auth_router, prefix="/api")
