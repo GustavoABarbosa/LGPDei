@@ -1,6 +1,8 @@
 import os
 
 # Force test settings before app.config is imported (overrides ApiLGPDei/.env).
+# Default matches docker-compose root credentials and the CI mongo service.
+# Override with TEST_MONGODB_URI when needed.
 os.environ["APP_ENV"] = "test"
 os.environ["MONGODB_URI"] = os.environ.get(
     "TEST_MONGODB_URI",
