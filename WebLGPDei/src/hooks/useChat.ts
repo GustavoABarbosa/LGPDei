@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 
-import { API_BASE, throwIfNotOk } from "@/lib/api";
+import { API_BASE, CSRF_HEADER, CSRF_HEADER_VALUE, throwIfNotOk } from "@/lib/api";
 import type { ChatMessage, SessionDetail } from "@/types";
 
 function mergeWithPendingMessage(
@@ -62,6 +62,7 @@ export function useChat(
             headers: {
               "Content-Type": "application/json",
               "x-locale": "pt",
+              [CSRF_HEADER]: CSRF_HEADER_VALUE,
             },
             body: JSON.stringify({ content, attachments }),
           },

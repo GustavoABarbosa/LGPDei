@@ -3,10 +3,16 @@ from tests.fakes import parse_sse
 PASSWORD = "Segura#123"
 
 
-async def register(client, email="ana@example.com", consent=True):
+async def register(client, email="ana@example.com", consent=True, adopt_guest_sessions=False):
     return await client.post(
         "/api/auth/register",
-        json={"name": "Ana", "email": email, "password": PASSWORD, "consent": consent},
+        json={
+            "name": "Ana",
+            "email": email,
+            "password": PASSWORD,
+            "consent": consent,
+            "adopt_guest_sessions": adopt_guest_sessions,
+        },
     )
 
 

@@ -3,12 +3,13 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langgraph.graph import END, START, StateGraph
 
 from app.agents.prompts import (
-    ASSESS_SYSTEM_PROMPT,
+    build_assess_system_prompt,
     build_assess_user_prompt,
     build_chat_system_prompt,
     classify_intent,
+    format_lgpd_excerpts,
+    format_untrusted_documents,
     get_disclaimer,
-    load_lgpd_knowledge,
 )
 from app.agents.schemas import AssessmentOutput
 from app.agents.state import GraphState
@@ -31,12 +32,21 @@ async def router_node(state: GraphState) -> dict:
 async def chat_node(state: GraphState) -> dict:
     locale = state.get("locale", "pt")
     model = create_chat_model()
-    system = build_chat_system_prompt(
-        locale,
-        state.get("documents", []),
-        state.get("last_assessment"),
-    )
-    lc_messages = [SystemMessage(content=system), *state.get("messages", [])]
+    system = build_chat_system_prompt(locale, state.get("last_assessment"))
+
+    context_parts: list[str] = []
+    law_block = format_lgpd_excerpts(state.get("law_excerpts") or [], locale)
+    if law_block:
+        context_parts.append(law_block)
+    docs_block = format_untrusted_documents(state.get("documents") or [], locale)
+    if docs_block:
+        context_parts.append(docs_block)
+
+    lc_messages: list = [SystemMessage(content=system)]
+    if context_parts:
+        lc_messages.append(HumanMessage(content="\n\n".join(context_parts)))
+    lc_messages.extend(state.get("messages", []))
+
     response = await model.ainvoke(lc_messages)
     return {"response_content": response.text}
 
@@ -54,9 +64,13 @@ async def assess_node(state: GraphState) -> dict:
             conversation_lines.append(f"Assistente: {msg.content}")
 
     conversation = "\n".join(conversation_lines)
-    knowledge = load_lgpd_knowledge()
-    system = f"{ASSESS_SYSTEM_PROMPT[locale]}\n\n## Referência LGPD\n{knowledge}"
-    user_prompt = build_assess_user_prompt(locale, conversation, state.get("documents", []))
+    system = build_assess_system_prompt(locale)
+    user_prompt = build_assess_user_prompt(
+        locale,
+        conversation,
+        state.get("documents") or [],
+        state.get("law_excerpts") or [],
+    )
 
     result = await structured.ainvoke(
         [SystemMessage(content=system), HumanMessage(content=user_prompt)]

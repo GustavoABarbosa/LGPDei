@@ -14,6 +14,7 @@ async def test_upload_list_and_delete(client):
 
     listed = (await client.get("/api/documents")).json()["documents"]
     assert listed[0]["sessionId"] == session_id
+    assert listed[0]["preview"] == "Coletamos CPF e e-mail."
 
     assert (await client.delete(f"/api/sessions/{session_id}/documents/{doc['id']}")).status_code == 200
     assert (await client.get(f"/api/sessions/{session_id}")).json()["documents"] == []

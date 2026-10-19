@@ -10,7 +10,9 @@ from app.dependencies import get_consented_session
 from app.middleware.rate_limit import limiter
 from app.models import AssessmentSession
 from app.services.chat_service import locale_from_header, stream_chat_response
+from app.services.pii_heuristic import detect_pii_signals
 from app.services.session_service import update_session_title_from_message
+from app.utils.http_error import HttpError
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +37,22 @@ async def stream_message(
     x_locale: str | None = Header(default=None),
 ):
     locale = x_locale if x_locale in ("pt", "en") else locale_from_header(accept_language)
+
+    if settings.pii_mode != "off":
+        signals = detect_pii_signals(body.content)
+        if signals and settings.pii_mode == "block":
+            raise HttpError(
+                400,
+                "Remova dados pessoais identificáveis (ex.: CPF, e-mail) antes de enviar. "
+                f"Sinais detectados: {', '.join(signals)}.",
+            )
+        if signals and settings.pii_mode == "warn":
+            logger.warning(
+                "Possible PII signals %s in session %s (warn mode; message accepted)",
+                signals,
+                session.id,
+            )
+
     await update_session_title_from_message(session, body.content)
 
     async def event_generator():

@@ -96,10 +96,22 @@ async def test_adoption_clears_expiry_of_sessions_messages_and_documents(client)
     await send(client, session_id, "O que é base legal?")
     assert await Message.find(Message.session_id == oid, Message.expires_at != None).count() == 2  # noqa: E711
 
-    await register(client)
+    await register(client, adopt_guest_sessions=True)
 
     assert (await get_stored(session_id)).expires_at is None
     assert await Message.find(Message.session_id == oid, Message.expires_at != None).count() == 0  # noqa: E711
     assert await SessionDocument.find(
         SessionDocument.session_id == oid, SessionDocument.expires_at != None  # noqa: E711
     ).count() == 0
+
+
+async def test_session_token_cannot_access_account_owned_session(client, other_client):
+    await register(client, adopt_guest_sessions=False)
+    session_id = (await create_session(client, consent=False))["id"]
+    session = await get_stored(session_id)
+    assert session.user_id is not None
+
+    # Second browser with only the session_token cookie (no JWT) must be denied.
+    other_client.cookies.set("session_token", client.cookies["session_token"])
+    response = await other_client.get(f"/api/sessions/{session_id}")
+    assert response.status_code == 403

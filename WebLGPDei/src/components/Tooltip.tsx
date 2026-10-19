@@ -6,13 +6,17 @@ import { createPortal } from "react-dom";
 import { useIsClient } from "@/hooks/useIsClient";
 import { cn } from "@/lib/utils";
 
+type Side = "top" | "right";
+
 type Props = {
   content: string;
   children: React.ReactNode;
   className?: string;
+  /** Preferred placement relative to the trigger. Defaults to top. */
+  side?: Side;
 };
 
-export function Tooltip({ content, children, className }: Props) {
+export function Tooltip({ content, children, className, side = "top" }: Props) {
   const [open, setOpen] = useState(false);
   const mounted = useIsClient();
   const [coords, setCoords] = useState({ top: 0, left: 0 });
@@ -22,8 +26,17 @@ export function Tooltip({ content, children, className }: Props) {
   function updatePosition() {
     const rect = triggerRef.current?.getBoundingClientRect();
     if (!rect) return;
+
+    if (side === "right") {
+      setCoords({
+        top: rect.top + rect.height / 2,
+        left: rect.right + 8,
+      });
+      return;
+    }
+
     setCoords({
-      top: rect.top,
+      top: rect.top - 8,
       left: rect.left + rect.width / 2,
     });
   }
@@ -48,7 +61,7 @@ export function Tooltip({ content, children, className }: Props) {
       window.removeEventListener("scroll", updatePosition, true);
       window.removeEventListener("resize", updatePosition);
     };
-  }, [open]);
+  }, [open, side]);
 
   if (!content) {
     return <>{children}</>;
@@ -74,18 +87,38 @@ export function Tooltip({ content, children, className }: Props) {
           <span
             id={tooltipId}
             role="tooltip"
-            style={{ top: coords.top - 8, left: coords.left }}
-            className="pointer-events-none fixed z-[100] w-max max-w-md -translate-x-1/2 -translate-y-full whitespace-normal break-words rounded-lg border border-[var(--border)] bg-[var(--card)] px-2.5 py-1.5 text-xs text-[var(--foreground)] shadow-lg"
+            style={{ top: coords.top, left: coords.left }}
+            className={cn(
+              "pointer-events-none fixed z-[100] w-max max-w-md whitespace-normal break-words rounded-lg border border-[var(--border)] bg-[var(--card)] px-2.5 py-1.5 text-xs text-[var(--foreground)] shadow-lg",
+              side === "right"
+                ? "-translate-y-1/2"
+                : "-translate-x-1/2 -translate-y-full",
+            )}
           >
             {content}
-            <span
-              aria-hidden
-              className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-[var(--border)]"
-            />
-            <span
-              aria-hidden
-              className="absolute left-1/2 top-full -translate-x-1/2 -mt-px border-4 border-transparent border-t-[var(--card)]"
-            />
+            {side === "right" ? (
+              <>
+                <span
+                  aria-hidden
+                  className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[var(--border)]"
+                />
+                <span
+                  aria-hidden
+                  className="absolute right-full top-1/2 -translate-y-1/2 translate-x-px border-4 border-transparent border-r-[var(--card)]"
+                />
+              </>
+            ) : (
+              <>
+                <span
+                  aria-hidden
+                  className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-[var(--border)]"
+                />
+                <span
+                  aria-hidden
+                  className="absolute left-1/2 top-full -translate-x-1/2 -mt-px border-4 border-transparent border-t-[var(--card)]"
+                />
+              </>
+            )}
           </span>,
           document.body,
         )}

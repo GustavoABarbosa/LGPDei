@@ -5,6 +5,7 @@ import Link from "next/link";
 import { FormEvent, useState } from "react";
 
 import { ConsentCheckbox } from "@/components/consent/ConsentCheckbox";
+import { KnowledgeFreshnessNotice } from "@/components/consent/KnowledgeFreshnessNotice";
 import { SensitiveDataNotice } from "@/components/consent/SensitiveDataNotice";
 
 type Props = {
@@ -45,6 +46,7 @@ export function GuestConsentGate({ onAccept }: Props) {
           para mantê-las até você excluí-las.
         </p>
         <SensitiveDataNotice className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-200" />
+        <KnowledgeFreshnessNotice className="rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2" />
         <ConsentCheckbox
           checked={consent}
           onChange={setConsent}

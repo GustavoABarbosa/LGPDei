@@ -41,11 +41,21 @@ def clear_auth_cookies(response: Response) -> None:
     delete_cookie(response, SESSION_COOKIE)
 
 
-async def sign_in(response: Response, user: User, session_token: str | None) -> dict:
+async def sign_in(
+    response: Response,
+    user: User,
+    session_token: str | None,
+    *,
+    adopt_guest_sessions: bool,
+) -> dict:
     set_auth_cookie(response, user)
-    if session_token:
-        await link_sessions_for_token(session_token, str(user.id))
-    return {"user": to_public_user(user).model_dump()}
+    linked = 0
+    if adopt_guest_sessions and session_token:
+        linked = await link_sessions_for_token(session_token, str(user.id))
+    return {
+        "user": to_public_user(user).model_dump(),
+        "adoptedGuestSessions": linked,
+    }
 
 
 @auth_router.post("/register")
@@ -56,7 +66,12 @@ async def register(
     response: Response,
     session_token: str | None = Depends(get_optional_session_token),
 ):
-    return await sign_in(response, await register_user(body), session_token)
+    return await sign_in(
+        response,
+        await register_user(body),
+        session_token,
+        adopt_guest_sessions=body.adopt_guest_sessions,
+    )
 
 
 @auth_router.post("/login")
@@ -67,7 +82,12 @@ async def login(
     response: Response,
     session_token: str | None = Depends(get_optional_session_token),
 ):
-    return await sign_in(response, await login_user(body), session_token)
+    return await sign_in(
+        response,
+        await login_user(body),
+        session_token,
+        adopt_guest_sessions=body.adopt_guest_sessions,
+    )
 
 
 @auth_router.get("/me")

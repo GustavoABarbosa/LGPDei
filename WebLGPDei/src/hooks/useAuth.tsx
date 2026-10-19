@@ -20,12 +20,17 @@ export type AuthUser = {
 type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (
+    email: string,
+    password: string,
+    adoptGuestSessions?: boolean,
+  ) => Promise<void>;
   signUp: (
     name: string,
     email: string,
     password: string,
     consent: boolean,
+    adoptGuestSessions?: boolean,
   ) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -58,19 +63,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
   }, [refreshUser]);
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    const data = await apiFetch<{ user: AuthUser }>("/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    });
-    setUser(data.user);
-  }, []);
+  const signIn = useCallback(
+    async (email: string, password: string, adoptGuestSessions = false) => {
+      const data = await apiFetch<{ user: AuthUser }>("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({
+          email,
+          password,
+          adopt_guest_sessions: adoptGuestSessions,
+        }),
+      });
+      setUser(data.user);
+    },
+    [],
+  );
 
   const signUp = useCallback(
-    async (name: string, email: string, password: string, consent: boolean) => {
+    async (
+      name: string,
+      email: string,
+      password: string,
+      consent: boolean,
+      adoptGuestSessions = false,
+    ) => {
       const data = await apiFetch<{ user: AuthUser }>("/auth/register", {
         method: "POST",
-        body: JSON.stringify({ name, email, password, consent }),
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+          consent,
+          adopt_guest_sessions: adoptGuestSessions,
+        }),
       });
       setUser(data.user);
     },

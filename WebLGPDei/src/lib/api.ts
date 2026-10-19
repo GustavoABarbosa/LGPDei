@@ -53,6 +53,10 @@ export function formatRateLimitMessage(retryAfterSeconds?: number): string {
   return `Limite atingido. Tente novamente em ${minutes} minuto${minutes > 1 ? "s" : ""}.`;
 }
 
+/** Sent on every API call; required by the API when COOKIE_SAMESITE=none. */
+export const CSRF_HEADER = "X-Requested-With";
+export const CSRF_HEADER_VALUE = "LGPDei";
+
 export async function apiFetch<T>(
   path: string,
   options: RequestInit = {},
@@ -64,6 +68,7 @@ export async function apiFetch<T>(
       ...(options.body instanceof FormData
         ? {}
         : { "Content-Type": "application/json" }),
+      [CSRF_HEADER]: CSRF_HEADER_VALUE,
       ...options.headers,
     },
   });

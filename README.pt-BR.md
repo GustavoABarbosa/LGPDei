@@ -16,6 +16,8 @@ risco, achados e referências legais.
   [`/docs`](https://lgpdei-api.onrender.com/docs)
 - Banco de dados: MongoDB Atlas
 
+Últimas mudanças na branch `cursor/agent-security-pageindex`: ver [Notas de versão](#notas-de-versão).
+
 ## Por que construí este projeto
 
 Minha stack do dia a dia é TypeScript, Vue/Nuxt e Node.js. O LGPDei foi construído de propósito com Python/FastAPI e
@@ -60,16 +62,18 @@ flowchart LR
 
 - Sessões anônimas identificadas por um cookie HttpOnly reutilizado em todas as sessões de visitante do navegador; os
   dados de visitantes expiram após 72 horas (índice TTL do MongoDB).
-- Conta opcional (JWT em cookie HttpOnly); as sessões de visitante são vinculadas à conta no cadastro ou login, e as
-  sessões de conta são mantidas até o usuário excluí-las.
+- Conta opcional (JWT em cookie HttpOnly); as sessões de visitante só são vinculadas à conta com opt-in
+  (`adopt_guest_sessions`) no cadastro ou login. Sessões de conta exigem o JWT (o `session_token` de visitante sozinho
+  não acessa) e são mantidas até o usuário excluí-las.
 - Controles de privacidade: registro de consentimento, correção de perfil, exportação de dados, exclusão de conta,
   política de privacidade e termos (veja [Conformidade com a LGPD](#conformidade-com-a-lgpd)).
 - Chat com streaming via Server-Sent Events, em português ou inglês.
 - Guardrails: o agente só responde perguntas sobre a LGPD, nunca escreve código, não dá aconselhamento jurídico direto
   nem redige documentos, e trata mensagens e documentos como conteúdo, não como instruções. Toda resposta do chat e todo
   relatório terminam com o aviso "ferramenta educativa, não substitui assessoria jurídica", adicionado pela API.
-- Envio de documentos (PDF, DOCX, TXT, MD, CSV) com limites por arquivo e por sessão; o texto extraído fundamenta as
-  respostas.
+- Envio de documentos (PDF, DOCX, TXT, MD, CSV) com limites por arquivo e por sessão. Docs pequenos entram como
+  `UNTRUSTED_USER_CONTENT`; docs maiores usam retrieve em árvore estilo PageIndex. O corpus estático é o texto integral
+  da Lei 13.709/2018 (versionado em `ApiLGPDei/app/knowledge/`), recuperado por turno como `LGPD_SOURCE_EXCERPTS`.
 - Relatório de conformidade: risco geral, nota de 0 a 100, achados com gravidade, referência legal, evidência e
   recomendação.
 - Limites de requisição por IP para sessões, mensagens e uploads, configuráveis por variáveis de ambiente.
@@ -172,12 +176,99 @@ gerados pelo CI e usados pelo `docker compose --profile app` para auto-hospedage
 | Tema | Implementação |
 | --- | --- |
 | Transparência | `/privacidade` (política de privacidade) e `/termos` (termos de uso), com links no rodapé, na página de login e em cada caixa de consentimento. A política lista os operadores: Anthropic (EUA), Render (hospedagem da API, EUA), MongoDB Atlas (banco de dados, São Paulo) e Vercel (hospedagem web, EUA). |
-| Consentimento (art. 7º, I e art. 33, VIII) | Caixa desmarcada cobrindo termos, política de privacidade, transferência à Anthropic (EUA) e declaração de maioridade. Exigida no cadastro (`User.consent_version` / `consent_at`) e antes da primeira sessão de um visitante (armazenada na sessão; as sessões seguintes do mesmo navegador a herdam). Uploads e mensagens em sessões de visitante sem consentimento vigente são rejeitados. Atualize `CONSENT_VERSION` em `app/consent.py` sempre que os textos mudarem. |
+| Consentimento (art. 7º, I e art. 33, VIII) | Caixa desmarcada cobrindo termos, política de privacidade, transferência à Anthropic (EUA) e declaração de maioridade. Exigida no cadastro (`User.consent_version` / `consent_at`) e antes da primeira sessão de um visitante (armazenada na sessão; as sessões seguintes do mesmo navegador a herdam). Uploads e mensagens sem o `CONSENT_VERSION` atual são rejeitados para visitantes e para contas. Atualize `CONSENT_VERSION` em `app/consent.py` sempre que os textos mudarem. |
 | Dados sensíveis (art. 11) | A tela de consentimento e o campo do chat orientam o usuário a não enviar dados sensíveis nem dados pessoais de terceiros. |
 | Retenção | Sessões, mensagens e documentos de visitantes expiram 72 h após a criação (índice TTL). Sessões de conta têm `expires_at = null` e são mantidas até serem excluídas. Apenas o texto extraído dos documentos é armazenado, nunca o arquivo. |
 | Direitos do titular (art. 18) | Acesso e portabilidade: "Baixar meus dados". Correção: "Editar perfil". Eliminação: exclusão de sessão / arquivo (com confirmação) e "Excluir conta" (exige senha; revogar o consentimento = excluir a conta). |
-| Segurança | bcrypt, cookies HttpOnly (`Secure` por padrão), `token_version` do JWT revogado no logout, na troca de e-mail e na exclusão, limites de requisição nas rotas de autenticação, erros genéricos no streaming (detalhes apenas nos logs do servidor), MongoDB com autenticação e sem porta pública. |
+| Segurança | bcrypt, cookies HttpOnly (`Secure` por padrão), JWT obrigatório para sessões de conta, adoção de sessões guest só com opt-in, cabeçalho CSRF quando `SameSite=none`, `token_version` do JWT revogado no logout, na troca de e-mail e na exclusão, limites de requisição nas rotas de autenticação, erros genéricos no streaming (detalhes apenas nos logs do servidor), MongoDB com autenticação e sem porta pública. |
 | Logs | `app/log_config.json` formata o log de acesso do uvicorn sem IPs de clientes; os IPs ficam apenas em memória no limitador de requisições. |
+
+## Corpus de conhecimento (LGPD)
+
+O agente **não** coloca a lei inteira no system prompt. O corpus versionado fica em `ApiLGPDei/app/knowledge/`:
+
+| Arquivo | Papel |
+| --- | --- |
+| `manifest.json` | `version`, `updated_at`, fontes oficiais |
+| `lei-13709-2018.md` | Texto integral da Lei 13.709/2018 (Planalto) |
+| `lei-13709.pageindex.json` | Índice em árvore usado no retrieve |
+
+Para atualizar após mudança legislativa:
+
+1. Substitua ou edite `lei-13709-2018.md`.
+2. Atualize `version` / `updated_at` em `manifest.json`.
+3. Regenere o índice: `cd ApiLGPDei && python -m scripts.build_knowledge_index`.
+4. Rode `pytest` e faça o deploy.
+
+`GET /api/health` expõe `knowledgeVersion` e `knowledgeUpdatedAt`.
+
+## Fase 2 (fora desta branch)
+
+- **AWS Bedrock Knowledge Bases / AgentCore** como RAG vetorial gerenciado se o corpus multi-documento crescer.
+- **DynamoDB** sozinho não substitui índice de árvore ou vetorial; mantenha Atlas (ou S3 + Bedrock) para o corpo dos documentos.
+- Refresh automático de orientações da ANPD além do texto da lei.
+- MongoDB Atlas Vector Search se corpora fragmentados curtos ultrapassarem árvores estilo PageIndex.
+
+## Notas de versão
+
+**Branch:** `cursor/agent-security-pageindex`  
+**Versão do conhecimento:** `2026.10.16` (corpus Lei 13.709/2018)  
+**Status:** alterações locais; ainda não mescladas em `main` até validação
+
+Esta versão endurece a autenticação de sessões, substitui o stuffing de um resumo curto da LGPD por um pipeline versionado de retrieve sobre a lei integral (estilo PageIndex) e melhora a UX de anexos no chat.
+
+### Resumo
+
+| Área | Mudança |
+| --- | --- |
+| Segurança | Sessões de conta só com JWT; adoção guest opt-in; consentimento revalidado para contas; CSRF quando `SameSite=none`; secrets fracos rejeitados em produção; `/docs` off em produção |
+| Grounding do agente | Corpus integral da Lei 13.709/2018 + retrieve em árvore; docs da sessão como `UNTRUSTED_USER_CONTENT`; trechos da lei como `LGPD_SOURCE_EXCERPTS` |
+| Privacidade (UX) | Heurística leve de PII nas mensagens (`PII_MODE`); aviso de atualização da base na UI |
+| Chat (UX) | Chips do arquivo pendente antes do envio, com remoção |
+| Ops | `requirements.txt` pinado; health retorna `knowledgeVersion` / `knowledgeUpdatedAt` |
+
+### Segurança
+
+- **Posse de sessão de conta:** com `user_id` definido, só o JWT correspondente libera acesso; `session_token` sozinho → `403`.
+- **Listagem guest:** só sessões com `user_id == null`.
+- **Adoção opt-in:** `adopt_guest_sessions` (padrão `false`) no register/login + checkbox na página de auth.
+- **Consentimento no data plane:** guests e contas precisam do `CONSENT_VERSION` atual para mensagens/uploads.
+- **CSRF (sites separados):** com `COOKIE_SAMESITE=none`, mutações em `/api/*` exigem `X-Requested-With: LGPDei`.
+- **Secrets:** em `APP_ENV=production`, placeholders/`dev-only`/curtos demais são rejeitados.
+- **OpenAPI:** `/docs` e `/redoc` desligados em produção.
+- **PII:** `PII_MODE=off|warn|block` no corpo da mensagem (heurística; uploads ainda não).
+
+### Agente e conhecimento
+
+- Removido o stuffing de `lgpd-summary.md` no system prompt.
+- Corpus em `ApiLGPDei/app/knowledge/`: `manifest.json`, `lei-13709-2018.md`, `lei-13709.pageindex.json`.
+- Retrieve por turno: `LGPD_SOURCE_EXCERPTS` (lei) + `UNTRUSTED_USER_CONTENT` (docs).
+- Uploads híbridos: abaixo de `PAGEINDEX_MIN_CHARS` → texto completo (com teto); acima → árvore + nós relevantes.
+- Rebuild: `python -m scripts.build_knowledge_index`.
+- Implementação **estilo** PageIndex local (sem SDK VectifyAI), stack só Anthropic.
+
+### Web UI
+
+- Checkbox para vincular conversas anônimas à conta.
+- Cliente sempre envia o header CSRF.
+- Composer: anexos visíveis e removíveis antes de enviar.
+- Aviso de frescor da knowledge.
+
+### Migração / breaking
+
+- Frontends que assumiam adoção automática de guest no login precisam enviar `adopt_guest_sessions: true` ou usar o checkbox.
+- Com `SameSite=none`, o cliente web deve enviar `X-Requested-With: LGPDei`.
+- Produção: secrets fortes + `APP_ENV=production`.
+- Deploy deve incluir os arquivos em `knowledge/` e regenerar o índice após atualizar a lei.
+
+### Limitações conhecidas (fora desta release)
+
+- Histórico / `last_assessment` ainda não totalmente isolados como untrusted (risco residual de prompt injection indireto).
+- Retrieve lexical — paráfrases podem errar o artigo.
+- PII não cobre uploads; padrão é `warn`.
+- Corpus = texto da lei; ANPD/resoluções continuam refresh manual (ver [Corpus](#corpus-de-conhecimento-lgpd) e [Fase 2](#fase-2-fora-desta-branch)).
+
+Versão em inglês: [Release notes](README.md#release-notes).
 
 ## Aviso legal
 
