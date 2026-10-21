@@ -11,7 +11,7 @@ export default function TermsPage() {
   return (
     <LegalPage title="Termos de uso" updatedAt="13 de outubro de 2026">
       <p>
-        Estes termos regem o uso do LGPDei, oferecido por Gustavo Ariel Barbosa, 131.757.769-81. Ao criar uma conta ou iniciar
+        Estes termos regem o uso do LGPDei, oferecido por Gustavo Ariel Barbosa. Ao criar uma conta ou iniciar
         uma sessão, você concorda com eles e com a{" "}
         <Link href="/privacidade" className="text-primary-600 underline">
           Política de privacidade

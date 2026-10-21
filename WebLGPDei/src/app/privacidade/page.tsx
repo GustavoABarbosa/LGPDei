@@ -19,7 +19,7 @@ export default function PrivacyPage() {
       <LegalSection title="1. Controlador e encarregado">
         <ul>
           <li>
-            <strong>Controlador:</strong> Gustavo Ariel Barbosa, 131.757.769-81, R. Cidade de Matelândia, 36. Adhemar Garcia, Joinville-SC, 89230-635.
+            <strong>Controlador:</strong> Gustavo Ariel Barbosa, e-mail contato.barbosa@outlook.com.
           </li>
           <li>
             <strong>Encarregado pelo tratamento de dados (DPO):</strong> Gustavo Ariel Barbosa, e-mail contato.barbosa@outlook.com.
